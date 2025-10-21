@@ -1,0 +1,112 @@
+# Sentinel Configuration - Python FastAPI
+# FastAPI + React + PostgreSQL
+#
+# Built by Glincker (A GLINR Product)
+# https://glincker.com/sentinel
+
+# Global environment variables
+global_env:
+  PYTHONUNBUFFERED: "1"
+  LOG_LEVEL: debug
+
+processes:
+  # PostgreSQL Database
+  - name: postgres
+    command: docker
+    args:
+      - run
+      - --rm
+      - --name
+      - sentinel-postgres
+      - -p
+      - "5432:5432"
+      - -e
+      - POSTGRES_USER=postgres
+      - -e
+      - POSTGRES_PASSWORD=postgres
+      - -e
+      - POSTGRES_DB=myapp
+      - postgres:16-alpine
+    auto_restart: true
+    max_restarts: 5
+    restart_delay_ms: 3000
+
+  # FastAPI Backend
+  - name: backend
+    command: uvicorn
+    args:
+      - main:app
+      - --reload
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8101"
+    cwd: ./server
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/myapp
+      SECRET_KEY: your-secret-key-change-in-production
+      CORS_ORIGINS: http://localhost:8100
+      ENVIRONMENT: development
+    depends_on:
+      - postgres
+    auto_restart: true
+    max_restarts: 3
+    restart_delay_ms: 1000
+    health_check:
+      command: curl
+      args:
+        - -f
+        - http://localhost:8101/api/health
+      interval_ms: 10000
+      timeout_ms: 5000
+      retries: 3
+
+  # React Frontend (Vite)
+  - name: frontend
+    command: npm
+    args:
+      - run
+      - dev
+    cwd: ./client
+    env:
+      PORT: "8100"
+      VITE_API_URL: http://localhost:8101/api
+    depends_on:
+      - backend
+    auto_restart: true
+    max_restarts: 3
+    restart_delay_ms: 1000
+
+  # Optional: Redis for caching
+  - name: redis
+    command: docker
+    args:
+      - run
+      - --rm
+      - --name
+      - sentinel-redis
+      - -p
+      - "6379:6379"
+      - redis:7-alpine
+    auto_restart: true
+    max_restarts: 5
+    restart_delay_ms: 2000
+
+  # Optional: Celery Worker (async tasks)
+  - name: celery-worker
+    command: celery
+    args:
+      - -A
+      - main.celery
+      - worker
+      - --loglevel=info
+    cwd: ./server
+    env:
+      REDIS_URL: redis://localhost:6379/0
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/myapp
+    depends_on:
+      - redis
+      - postgres
+    auto_restart: true
+    max_restarts: 3
+    restart_delay_ms: 2000

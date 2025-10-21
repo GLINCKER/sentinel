@@ -1,0 +1,73 @@
+# Sentinel Configuration - Next.js Full-Stack
+# Next.js App Router + API Routes + PostgreSQL
+#
+# Built by Glincker (A GLINR Product)
+# https://glincker.com/sentinel
+
+# Global environment variables
+global_env:
+  NODE_ENV: development
+  LOG_LEVEL: debug
+
+processes:
+  # PostgreSQL Database
+  - name: postgres
+    command: docker
+    args:
+      - run
+      - --rm
+      - --name
+      - sentinel-postgres
+      - -p
+      - "5432:5432"
+      - -e
+      - POSTGRES_USER=postgres
+      - -e
+      - POSTGRES_PASSWORD=postgres
+      - -e
+      - POSTGRES_DB=myapp
+      - postgres:16-alpine
+    auto_restart: true
+    max_restarts: 5
+    restart_delay_ms: 3000
+
+  # Next.js Application (Frontend + API Routes)
+  - name: nextjs
+    command: npm
+    args:
+      - run
+      - dev
+    cwd: ./app
+    env:
+      PORT: "8100"
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/myapp
+      NEXTAUTH_SECRET: your-secret-key-change-in-production
+      NEXTAUTH_URL: http://localhost:8100
+    depends_on:
+      - postgres
+    auto_restart: true
+    max_restarts: 3
+    restart_delay_ms: 1000
+    health_check:
+      command: curl
+      args:
+        - -f
+        - http://localhost:8100/api/health
+      interval_ms: 10000
+      timeout_ms: 5000
+      retries: 3
+
+  # Optional: Redis for session storage/caching
+  - name: redis
+    command: docker
+    args:
+      - run
+      - --rm
+      - --name
+      - sentinel-redis
+      - -p
+      - "6379:6379"
+      - redis:7-alpine
+    auto_restart: true
+    max_restarts: 5
+    restart_delay_ms: 2000

@@ -1,0 +1,83 @@
+{
+  "name": "sentinel",
+  "version": "0.1.0-alpha",
+  "description": "Your Development Guardian - Process Manager & System Monitor built by GLINCKER",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "format": "prettier --write \"src/**/*.{js,svelte,css,html}\"",
+    "format:check": "prettier --check \"src/**/*.{js,svelte,css,html}\"",
+    "lint": "eslint src --ext .js,.svelte",
+    "lint:fix": "eslint src --ext .js,.svelte --fix",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage",
+    "commit": "cz",
+    "hooks:install": "lefthook install",
+    "hooks:uninstall": "lefthook uninstall"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.9.0",
+    "@tauri-apps/plugin-dialog": "^2.4.0",
+    "@tauri-apps/plugin-fs": "^2.4.2",
+    "@tauri-apps/plugin-shell": "^2.3.1",
+    "svelte": "^5.41.1"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.6.1",
+    "@commitlint/config-conventional": "^19.6.1",
+    "@eslint/js": "^9.38.0",
+    "@sveltejs/vite-plugin-svelte": "^6.2.1",
+    "@tauri-apps/cli": "^2.9.0",
+    "@testing-library/svelte": "^5.2.8",
+    "@vitest/coverage-v8": "^3.2.4",
+    "autoprefixer": "^10.4.21",
+    "commitizen": "^4.3.1",
+    "cz-conventional-changelog": "^3.3.0",
+    "eslint": "^9.38.0",
+    "eslint-plugin-svelte": "^3.12.5",
+    "globals": "^15.14.0",
+    "jsdom": "^27.0.1",
+    "lefthook": "^1.10.3",
+    "postcss": "^8.5.6",
+    "prettier": "^3.6.2",
+    "prettier-plugin-svelte": "^3.4.0",
+    "tailwindcss": "^4.1.15",
+    "vite": "^7.1.11",
+    "vitest": "^3.2.4"
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  },
+  "packageManager": "pnpm@9.15.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/glincker/sentinel.git"
+  },
+  "keywords": [
+    "process-manager",
+    "system-monitor",
+    "developer-tools",
+    "docker",
+    "containers",
+    "devops",
+    "tauri",
+    "rust",
+    "svelte",
+    "glinr",
+    "glincker"
+  ],
+  "author": "Glincker (A GLINR Product)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/glincker/sentinel/issues"
+  },
+  "homepage": "https://glincker.com/sentinel"
+}

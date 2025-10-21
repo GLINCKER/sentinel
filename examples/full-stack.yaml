@@ -1,0 +1,79 @@
+# Full-Stack Application Configuration Example
+# This example demonstrates a complete web application setup
+# with database, backend API, frontend, and worker process
+
+processes:
+  # Database
+  - name: postgres
+    command: docker-compose up postgres
+    cwd: .
+    autoRestart: true
+    restartLimit: 3
+    healthCheck:
+      type: tcp
+      port: 5432
+      interval: 5000
+      timeout: 2000
+
+  # Redis cache
+  - name: redis
+    command: docker-compose up redis
+    cwd: .
+    autoRestart: true
+    restartLimit: 3
+    healthCheck:
+      type: tcp
+      port: 6379
+      interval: 5000
+
+  # Backend API
+  - name: api-server
+    command: cargo run --release
+    cwd: ./backend
+    env:
+      RUST_LOG: info
+      DATABASE_URL: postgres://localhost:5432/myapp
+      REDIS_URL: redis://localhost:6379
+      PORT: 8080
+    autoRestart: true
+    restartLimit: 5
+    restartDelay: 2000
+    dependsOn:
+      - postgres
+      - redis
+    healthCheck:
+      type: http
+      url: http://localhost:8080/health
+      interval: 10000
+
+  # Background worker
+  - name: worker
+    command: npm run worker
+    cwd: ./backend
+    env:
+      NODE_ENV: development
+      REDIS_URL: redis://localhost:6379
+    autoRestart: true
+    restartLimit: 10
+    dependsOn:
+      - redis
+
+  # Frontend development server
+  - name: frontend
+    command: npm run dev
+    cwd: ./frontend
+    env:
+      VITE_API_URL: http://localhost:8080
+      VITE_WS_URL: ws://localhost:8080/ws
+    autoRestart: true
+    restartLimit: 3
+    dependsOn:
+      - api-server
+
+# Global settings
+settings:
+  logLevel: info
+  logDirectory: ./logs
+  maxLogSize: 10485760  # 10MB
+  maxLogFiles: 5
+  gracefulShutdownTimeout: 30000  # 30 seconds

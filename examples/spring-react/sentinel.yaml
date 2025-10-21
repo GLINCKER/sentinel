@@ -1,0 +1,90 @@
+# Sentinel Configuration - Spring Boot + React
+# Spring Boot REST API + React SPA + PostgreSQL
+#
+# Built by Glincker (A GLINR Product)
+# https://glincker.com/sentinel
+
+# Global environment variables
+global_env:
+  SPRING_PROFILES_ACTIVE: development
+  LOG_LEVEL: debug
+
+processes:
+  # PostgreSQL Database
+  - name: postgres
+    command: docker
+    args:
+      - run
+      - --rm
+      - --name
+      - sentinel-postgres
+      - -p
+      - "5432:5432"
+      - -e
+      - POSTGRES_USER=postgres
+      - -e
+      - POSTGRES_PASSWORD=postgres
+      - -e
+      - POSTGRES_DB=myapp
+      - postgres:16-alpine
+    auto_restart: true
+    max_restarts: 5
+    restart_delay_ms: 3000
+
+  # Spring Boot Backend
+  - name: backend
+    command: ./mvnw
+    args:
+      - spring-boot:run
+    cwd: ./server
+    env:
+      SERVER_PORT: "8101"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/myapp
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      CORS_ALLOWED_ORIGINS: http://localhost:8100
+    depends_on:
+      - postgres
+    auto_restart: true
+    max_restarts: 3
+    restart_delay_ms: 5000
+    health_check:
+      command: curl
+      args:
+        - -f
+        - http://localhost:8101/actuator/health
+      interval_ms: 15000
+      timeout_ms: 5000
+      retries: 3
+
+  # React Frontend (Create React App or Vite)
+  - name: frontend
+    command: npm
+    args:
+      - run
+      - dev
+    cwd: ./client
+    env:
+      PORT: "8100"
+      REACT_APP_API_URL: http://localhost:8101/api
+    depends_on:
+      - backend
+    auto_restart: true
+    max_restarts: 3
+    restart_delay_ms: 1000
+
+  # Optional: Redis for session storage
+  - name: redis
+    command: docker
+    args:
+      - run
+      - --rm
+      - --name
+      - sentinel-redis
+      - -p
+      - "6379:6379"
+      - redis:7-alpine
+    auto_restart: true
+    max_restarts: 5
+    restart_delay_ms: 2000

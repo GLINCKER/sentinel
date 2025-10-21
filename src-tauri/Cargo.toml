@@ -1,0 +1,71 @@
+[package]
+name = "sentinel"
+version = "0.1.0-alpha"
+description = "Your Development Guardian - Process Manager & System Monitor built by GLINCKER"
+authors = ["Glincker (A GLINR Product)"]
+license = "MIT"
+repository = "https://github.com/GLINCKER/sentinel"
+homepage = "https://glincker.com/sentinel"
+keywords = ["process-manager", "system-monitor", "developer-tools", "devops"]
+categories = ["command-line-utilities", "development-tools"]
+edition = "2021"
+rust-version = "1.88"
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+# Tauri core
+tauri = { version = "2.0", features = ["devtools"] }
+tauri-plugin-shell = "2.0"
+tauri-plugin-dialog = "2.0"
+tauri-plugin-fs = "2.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# System monitoring
+sysinfo = "0.37"
+
+# Process management
+subprocess = "0.2"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Utilities
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "5.0"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = "3.8"
+mockall = "0.13"
+proptest = "1.5"
+criterion = { version = "0.5", features = ["html_reports"] }
+assert_cmd = "2.0"
+predicates = "3.1"
+
+[[bench]]
+name = "benchmarks"
+harness = false
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
+
+[profile.dev]
+incremental = true

@@ -1,0 +1,18 @@
+# Act Configuration for Sentinel
+# Built by Glincker (A GLINR Product)
+
+# Use Linux AMD64 architecture (required for M1/M2 Macs)
+--container-architecture linux/amd64
+
+# Use official GitHub runner images for better compatibility
+# Note: These are larger but more accurate
+-P ubuntu-latest=catthehacker/ubuntu:act-latest
+
+# Reuse containers between runs (faster)
+--reuse
+
+# Bind workspace volume
+--bind
+
+# Don't pull images every time (use local cache)
+--pull=false

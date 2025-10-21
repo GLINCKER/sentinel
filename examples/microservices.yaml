@@ -1,0 +1,68 @@
+# Microservices Configuration Example
+# This example shows a microservices architecture with multiple services
+
+# Process groups allow starting/stopping related services together
+groups:
+  - name: core-services
+    processes: [auth-service, user-service, api-gateway]
+
+  - name: background-services
+    processes: [email-worker, analytics-worker]
+
+processes:
+  # Authentication Service
+  - name: auth-service
+    command: ./auth-service
+    cwd: ./services/auth
+    env:
+      PORT: 3001
+      JWT_SECRET: ${JWT_SECRET}  # From environment
+      DATABASE_URL: postgres://localhost:5432/auth
+    autoRestart: true
+
+  # User Service
+  - name: user-service
+    command: python -m uvicorn main:app --port 3002
+    cwd: ./services/users
+    env:
+      PORT: 3002
+      AUTH_SERVICE_URL: http://localhost:3001
+    autoRestart: true
+    dependsOn:
+      - auth-service
+
+  # API Gateway
+  - name: api-gateway
+    command: npm start
+    cwd: ./gateway
+    env:
+      PORT: 8080
+      AUTH_SERVICE: http://localhost:3001
+      USER_SERVICE: http://localhost:3002
+    autoRestart: true
+    restartLimit: 5
+    dependsOn:
+      - auth-service
+      - user-service
+
+  # Email Worker
+  - name: email-worker
+    command: npm run worker:email
+    cwd: ./workers
+    env:
+      REDIS_URL: redis://localhost:6379
+      SMTP_HOST: smtp.example.com
+    autoRestart: true
+    restartLimit: 10
+
+  # Analytics Worker
+  - name: analytics-worker
+    command: python worker.py
+    cwd: ./workers/analytics
+    env:
+      KAFKA_BROKERS: localhost:9092
+    autoRestart: true
+
+settings:
+  logLevel: debug
+  logDirectory: ./logs/microservices

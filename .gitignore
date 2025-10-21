@@ -1,0 +1,251 @@
+# Sentinel .gitignore
+# Built by Glincker (A GLINR Product)
+
+# ============================================================================
+# Internal Documentation (Don't commit)
+# ============================================================================
+.internal/
+doc/
+
+# ============================================================================
+# Dependencies
+# ============================================================================
+node_modules/
+.pnp
+.pnp.js
+
+# ============================================================================
+# Build Outputs
+# ============================================================================
+dist/
+build/
+release/
+target/
+src-tauri/target/
+cli/target/
+
+# Tauri specific
+src-tauri/WixTools/
+src-tauri/gen/
+
+# Frontend build
+.svelte-kit/
+.output/
+
+# ============================================================================
+# IDE & Editors
+# ============================================================================
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Vim
+*.swp
+*.swo
+*~
+.vim/
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Other
+.history/
+.project
+.classpath
+.settings/
+
+# ============================================================================
+# Operating System Files
+# ============================================================================
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+.Trash-*
+
+# ============================================================================
+# Environment & Secrets
+# ============================================================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# Secrets
+*.pem
+*.key
+*.cert
+secrets/
+credentials/
+
+# ============================================================================
+# Logs
+# ============================================================================
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Rust logs
+*.rlib
+
+# ============================================================================
+# Testing
+# ============================================================================
+coverage/
+*.lcov
+.nyc_output
+test-results/
+playwright-report/
+
+# Rust test artifacts
+*.profraw
+*.profdata
+
+# Code coverage
+lcov.info
+cobertura.xml
+*.gcda
+*.gcno
+*.gcov
+
+# ============================================================================
+# Temporary Files
+# ============================================================================
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+*.old
+
+# ============================================================================
+# Package Manager
+# ============================================================================
+# Keep package-lock.json (important for consistency)
+# Keep Cargo.lock (important for reproducible builds in applications)
+
+# Yarn
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
+
+# ============================================================================
+# GitHub Actions (Local Testing)
+# ============================================================================
+# act (nektos/act) artifacts
+.act/
+act-*.log
+
+# ============================================================================
+# Binary & Compiled
+# ============================================================================
+*.exe
+*.out
+*.app
+*.dmg
+*.pkg
+*.deb
+*.rpm
+*.AppImage
+
+# Except release binaries in specific directories
+!release/*.exe
+!release/*.dmg
+!release/*.deb
+!release/*.AppImage
+
+# ============================================================================
+# Archives
+# ============================================================================
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# ============================================================================
+# Misc
+# ============================================================================
+# Sentry
+.sentryclirc
+
+# Webpack
+.cache/
+
+# Parcel
+.cache
+.parcel-cache
+
+# Next.js (if examples need it)
+.next/
+out/
+
+# Nuxt.js
+.nuxt
+dist
+
+# Gatsby
+.cache/
+public
+
+# docusaurus
+.docusaurus/
+
+# Serverless
+.serverless/
+
+# FuseBox
+.fusebox/
+
+# DynamoDB Local
+.dynamodb/
+
+# TernJS
+.tern-port
+
+# Stores VSCode versions used for testing
+.vscode-test
+
+# Diagnostic reports
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json

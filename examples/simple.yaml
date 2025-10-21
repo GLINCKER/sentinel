@@ -1,0 +1,21 @@
+# Simple Sentinel Configuration Example
+# This example shows a basic setup with two processes
+
+processes:
+  - name: api-server
+    command: npm run dev
+    cwd: ./backend
+    env:
+      PORT: 3000
+      NODE_ENV: development
+    autoRestart: true
+    restartLimit: 5
+    restartDelay: 1000  # milliseconds
+
+  - name: frontend
+    command: npm start
+    cwd: ./frontend
+    env:
+      VITE_API_URL: http://localhost:3000
+    autoRestart: true
+    restartLimit: 3
