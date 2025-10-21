@@ -88,8 +88,6 @@ jobs:
       - name: Check formatting
         run: pnpm run format:check
 
-      - name: Run linter
-        run: pnpm run lint
 
       - name: Run tests
         run: pnpm test

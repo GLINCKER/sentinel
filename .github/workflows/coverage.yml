@@ -43,18 +43,18 @@ jobs:
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
 
       - name: Generate coverage
-        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+        run: cd src-tauri && cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          files: lcov.info
+          files: src-tauri/lcov.info
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Check coverage threshold
         run: |
-          COVERAGE=$(cargo llvm-cov --all-features --workspace --summary-only | grep 'TOTAL' | awk '{print $10}' | sed 's/%//')
+          COVERAGE=$(cd src-tauri && cargo llvm-cov --all-features --workspace --summary-only | grep 'TOTAL' | awk '{print $10}' | sed 's/%//')
           echo "Coverage: ${COVERAGE}%"
 
           if (( $(echo "$COVERAGE < 90.0" | bc -l) )); then
