@@ -264,7 +264,7 @@ settings:
   logLevel: info
 "#;
 
-        let file = NamedTempFile::new().unwrap();
+        let mut file = NamedTempFile::new().unwrap();
         file.write_all(yaml.as_bytes()).unwrap();
 
         let config = ConfigManager::load_from_file(file.path()).unwrap();

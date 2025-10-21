@@ -128,7 +128,7 @@ mod tests {
             8 * 1024 * 1024 * 1024,  // 8GB used
             2 * 1024 * 1024 * 1024,  // 2GB available
             4 * 1024 * 1024 * 1024,  // 4GB swap total
-            1 * 1024 * 1024 * 1024,  // 1GB swap used
+            1024 * 1024 * 1024,      // 1GB swap used
         );
         assert_eq!(stats.total, 10 * 1024 * 1024 * 1024);
         assert_eq!(stats.used, 8 * 1024 * 1024 * 1024);
