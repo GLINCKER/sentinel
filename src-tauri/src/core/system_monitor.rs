@@ -44,7 +44,7 @@ impl SystemMonitor {
     /// ```
     pub fn new() -> Self {
         let mut system = System::new_all();
-        system.refresh_all(sysinfo::RefreshKind::everything());
+        system.refresh_all();
 
         Self {
             system,
@@ -68,8 +68,8 @@ impl SystemMonitor {
         self.system.refresh_cpu_usage();
         self.system.refresh_memory();
         self.system
-            .refresh_processes(sysinfo::ProcessesToUpdate::All);
-        self.disks.refresh();
+            .refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+        self.disks.refresh(true);
 
         debug!("System metrics refreshed");
     }
@@ -146,7 +146,7 @@ impl SystemMonitor {
     /// # Returns
     /// Disk I/O information.
     fn get_disk_stats(&mut self) -> DiskStats {
-        let now = Instant::now();
+        let _now = Instant::now();
 
         // Get total disk space from first disk
         let (total_space, available_space) = self

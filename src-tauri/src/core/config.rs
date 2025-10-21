@@ -6,7 +6,7 @@ use crate::error::{Result, SentinelError};
 use crate::models::{Config, ProcessConfig};
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// Manages configuration loading, validation, and persistence.
 pub struct ConfigManager;
@@ -241,7 +241,7 @@ impl ConfigManager {
     }
 
     /// Parses JSON configuration.
-    fn parse_json(contents: &str, path: &Path) -> Result<Config> {
+    fn parse_json(contents: &str, _path: &Path) -> Result<Config> {
         serde_json::from_str(contents).map_err(|e| SentinelError::InvalidConfig {
             reason: format!("JSON parse error: {}", e),
         })
