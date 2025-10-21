@@ -264,7 +264,7 @@ settings:
   logLevel: info
 "#;
 
-        let mut file = NamedTempFile::new().unwrap();
+        let file = NamedTempFile::new().unwrap();
         file.write_all(yaml.as_bytes()).unwrap();
 
         let config = ConfigManager::load_from_file(file.path()).unwrap();
@@ -376,7 +376,7 @@ settings:
     #[test]
     fn test_save_and_load_config() {
         let config = ConfigManager::default_config();
-        let mut file = NamedTempFile::new().unwrap();
+        let file = NamedTempFile::new().unwrap();
         let path = file.path().to_path_buf();
 
         // Close the file so we can write to it

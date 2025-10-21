@@ -127,7 +127,7 @@ mod tests {
         let state = test_state();
         let config = test_config("test");
 
-        let result = start_process(config, State::from(&state)).await;
+        let result = start_process(config, state).await;
         assert!(result.is_ok());
 
         let info = result.unwrap();
@@ -138,7 +138,7 @@ mod tests {
     async fn test_list_processes_command() {
         let state = test_state();
 
-        let result = list_processes(State::from(&state)).await;
+        let result = list_processes(state).await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap().len(), 0);
     }
@@ -147,7 +147,7 @@ mod tests {
     async fn test_stop_nonexistent_process() {
         let state = test_state();
 
-        let result = stop_process("nonexistent".to_string(), State::from(&state)).await;
+        let result = stop_process("nonexistent".to_string(), state).await;
         assert!(result.is_err());
     }
 }

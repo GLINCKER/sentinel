@@ -77,7 +77,7 @@ mod tests {
     async fn test_get_system_stats_command() {
         let state = test_state();
 
-        let result = get_system_stats(State::from(&state)).await;
+        let result = get_system_stats(state).await;
         assert!(result.is_ok());
 
         let stats = result.unwrap();
@@ -90,7 +90,7 @@ mod tests {
         let state = test_state();
         let current_pid = std::process::id();
 
-        let result = get_process_stats(current_pid, State::from(&state)).await;
+        let result = get_process_stats(current_pid, state).await;
         assert!(result.is_ok());
 
         let (cpu, memory) = result.unwrap();
@@ -102,7 +102,7 @@ mod tests {
     async fn test_get_system_info_command() {
         let state = test_state();
 
-        let result = get_system_info(State::from(&state)).await;
+        let result = get_system_info(state).await;
         assert!(result.is_ok());
 
         let info = result.unwrap();
