@@ -145,7 +145,7 @@ command: echo hello
         let config: ProcessConfig = serde_yaml::from_str(yaml).unwrap();
         assert_eq!(config.name, "test");
         assert_eq!(config.command, "echo hello");
-        assert_eq!(config.auto_restart, true); // Default
+        assert!(config.auto_restart); // Default
         assert_eq!(config.restart_limit, 5); // Default
         assert_eq!(config.restart_delay, 1000); // Default
         assert!(config.depends_on.is_empty());

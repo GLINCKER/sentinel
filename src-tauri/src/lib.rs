@@ -120,8 +120,7 @@ mod tests {
 
     #[test]
     fn test_app_state_creation() {
-        let state = AppState::new();
-        // Just ensure it doesn't panic
-        assert!(true);
+        let _state = AppState::new();
+        // Just ensure it doesn't panic during creation
     }
 }
