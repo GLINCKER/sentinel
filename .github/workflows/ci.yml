@@ -27,6 +27,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libglib2.0-dev \
+            build-essential \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -36,7 +47,6 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-          # Faster cache
           cache-on-failure: true
 
       - name: Setup pnpm
@@ -71,6 +81,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libglib2.0-dev \
+            build-essential \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -79,16 +100,6 @@ jobs:
         with:
           workspaces: src-tauri
           cache-on-failure: true
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            libwebkit2gtk-4.1-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev \
-            patchelf
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -131,6 +142,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libglib2.0-dev \
+            build-essential \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -139,16 +161,6 @@ jobs:
         with:
           workspaces: src-tauri
           cache-on-failure: true
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            libwebkit2gtk-4.1-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev \
-            patchelf
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
