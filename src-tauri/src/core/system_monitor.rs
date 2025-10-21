@@ -44,7 +44,7 @@ impl SystemMonitor {
     /// ```
     pub fn new() -> Self {
         let mut system = System::new_all();
-        system.refresh_all();
+        system.refresh_all(sysinfo::RefreshKind::everything());
 
         Self {
             system,
