@@ -67,7 +67,8 @@ impl SystemMonitor {
     pub fn refresh(&mut self) {
         self.system.refresh_cpu_usage();
         self.system.refresh_memory();
-        self.system.refresh_processes();
+        self.system
+            .refresh_processes(sysinfo::ProcessesToUpdate::All);
         self.disks.refresh();
 
         debug!("System metrics refreshed");
