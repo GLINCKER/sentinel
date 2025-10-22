@@ -12,6 +12,9 @@ pub struct Config {
     /// Global settings.
     #[serde(default)]
     pub settings: GlobalSettings,
+    /// Global environment variables applied to all processes.
+    #[serde(default, rename = "globalEnv")]
+    pub global_env: HashMap<String, String>,
 }
 
 /// Configuration for a single process.
@@ -21,6 +24,9 @@ pub struct ProcessConfig {
     pub name: String,
     /// Command to execute.
     pub command: String,
+    /// Command arguments (optional).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub args: Vec<String>,
     /// Working directory (optional).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cwd: Option<PathBuf>,
@@ -31,14 +37,43 @@ pub struct ProcessConfig {
     #[serde(default = "default_auto_restart", rename = "autoRestart")]
     pub auto_restart: bool,
     /// Maximum number of restart attempts (0 = unlimited).
-    #[serde(default = "default_restart_limit", rename = "restartLimit")]
+    #[serde(
+        default = "default_restart_limit",
+        rename = "restartLimit",
+        alias = "max_restarts"
+    )]
     pub restart_limit: u32,
     /// Delay between restarts in milliseconds.
-    #[serde(default = "default_restart_delay", rename = "restartDelay")]
+    #[serde(
+        default = "default_restart_delay",
+        rename = "restartDelay",
+        alias = "restart_delay_ms"
+    )]
     pub restart_delay: u64,
     /// List of process names this process depends on.
     #[serde(default, rename = "dependsOn")]
     pub depends_on: Vec<String>,
+    /// Health check configuration (optional).
+    #[serde(skip_serializing_if = "Option::is_none", rename = "healthCheck")]
+    pub health_check: Option<HealthCheck>,
+}
+
+/// Health check configuration for a process.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HealthCheck {
+    /// Command to execute for health check.
+    pub command: String,
+    /// Arguments for the health check command.
+    #[serde(default)]
+    pub args: Vec<String>,
+    /// Interval between health checks in milliseconds.
+    #[serde(rename = "intervalMs")]
+    pub interval_ms: u64,
+    /// Timeout for health check command in milliseconds.
+    #[serde(rename = "timeoutMs")]
+    pub timeout_ms: u64,
+    /// Number of retries before marking as unhealthy.
+    pub retries: u32,
 }
 
 /// Global application settings.
@@ -166,14 +201,17 @@ command: echo hello
             processes: vec![ProcessConfig {
                 name: "test".to_string(),
                 command: "echo test".to_string(),
+                args: vec![],
                 cwd: None,
                 env: HashMap::new(),
                 auto_restart: true,
                 restart_limit: 3,
                 restart_delay: 2000,
                 depends_on: vec![],
+                health_check: None,
             }],
             settings: GlobalSettings::default(),
+            global_env: HashMap::new(),
         };
 
         let yaml = serde_yaml::to_string(&config).unwrap();

@@ -95,6 +95,18 @@ export async function getProcessLogs(name: string, lines: number = 1000): Promis
 }
 
 /**
+ * Stop all processes
+ */
+export async function stopAllProcesses(): Promise<void> {
+  try {
+    await invoke('stop_all_processes');
+    await fetchProcesses();
+  } catch (e) {
+    throw new Error(e instanceof Error ? e.message : 'Failed to stop all processes');
+  }
+}
+
+/**
  * Start polling for updates
  */
 export function startPolling(intervalMs: number = 2000) {

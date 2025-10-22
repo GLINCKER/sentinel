@@ -7,6 +7,6 @@ pub mod config;
 pub mod process;
 pub mod system;
 
-pub use config::{Config, GlobalSettings, ProcessConfig};
+pub use config::{Config, GlobalSettings, HealthCheck, ProcessConfig};
 pub use process::{ProcessInfo, ProcessState};
 pub use system::{CpuStats, DiskStats, MemoryStats, SystemStats};

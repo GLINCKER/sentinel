@@ -1,5 +1,6 @@
 //! Process management commands.
 
+use crate::core::LogLine;
 use crate::models::{ProcessConfig, ProcessInfo};
 use crate::state::AppState;
 use tauri::State;
@@ -100,6 +101,115 @@ pub async fn stop_all_processes(state: State<'_, AppState>) -> Result<(), String
     manager.stop_all().await.map_err(|e| e.to_string())
 }
 
+/// Gets all logs for a process.
+///
+/// # Arguments
+/// * `name` - Process name
+/// * `state` - Application state
+///
+/// # Returns
+/// * `Ok(Vec<LogLine>)` - All log lines
+/// * `Err(String)` - Process not found
+#[tauri::command]
+pub async fn get_process_logs(
+    name: String,
+    state: State<'_, AppState>,
+) -> Result<Vec<LogLine>, String> {
+    let manager = state.process_manager.lock().await;
+    manager
+        .get_logs(&name)
+        .await
+        .ok_or_else(|| format!("Process '{}' not found", name))
+}
+
+/// Gets the most recent N logs for a process.
+///
+/// # Arguments
+/// * `name` - Process name
+/// * `count` - Number of recent logs to retrieve
+/// * `state` - Application state
+///
+/// # Returns
+/// * `Ok(Vec<LogLine>)` - Recent log lines
+/// * `Err(String)` - Process not found
+#[tauri::command]
+pub async fn get_recent_process_logs(
+    name: String,
+    count: usize,
+    state: State<'_, AppState>,
+) -> Result<Vec<LogLine>, String> {
+    let manager = state.process_manager.lock().await;
+    manager
+        .get_recent_logs(&name, count)
+        .await
+        .ok_or_else(|| format!("Process '{}' not found", name))
+}
+
+/// Searches logs for a process.
+///
+/// # Arguments
+/// * `name` - Process name
+/// * `query` - Search query (case-insensitive substring match)
+/// * `state` - Application state
+///
+/// # Returns
+/// * `Ok(Vec<LogLine>)` - Matching log lines
+/// * `Err(String)` - Process not found
+#[tauri::command]
+pub async fn search_process_logs(
+    name: String,
+    query: String,
+    state: State<'_, AppState>,
+) -> Result<Vec<LogLine>, String> {
+    let manager = state.process_manager.lock().await;
+    manager
+        .search_logs(&name, &query)
+        .await
+        .ok_or_else(|| format!("Process '{}' not found", name))
+}
+
+/// Checks health of all processes and auto-restarts crashed ones.
+///
+/// This performs health checks on all managed processes, detects crashes,
+/// and automatically restarts processes with auto_restart enabled
+/// (respecting restart_limit and using exponential backoff).
+///
+/// # Arguments
+/// * `state` - Application state
+///
+/// # Returns
+/// * `Ok(Vec<String>)` - List of process names that were restarted
+/// * `Err(String)` - Error message
+#[tauri::command]
+pub async fn check_process_health(state: State<'_, AppState>) -> Result<Vec<String>, String> {
+    let mut manager = state.process_manager.lock().await;
+    Ok(manager.check_health().await)
+}
+
+/// Gracefully stops a process with timeout and force kill fallback.
+///
+/// On Unix: Sends SIGTERM, waits 5 seconds, then sends SIGKILL if needed.
+/// On Windows: Terminates the process after 5 second timeout.
+///
+/// # Arguments
+/// * `name` - Process name
+/// * `state` - Application state
+///
+/// # Returns
+/// * `Ok(())` - Process stopped gracefully
+/// * `Err(String)` - Error message
+#[tauri::command]
+pub async fn stop_process_gracefully(
+    name: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let mut manager = state.process_manager.lock().await;
+    manager
+        .stop_gracefully(&name)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -115,42 +225,14 @@ mod tests {
         ProcessConfig {
             name: name.to_string(),
             command: "echo test".to_string(),
+            args: vec![],
             cwd: None,
             env: HashMap::new(),
             auto_restart: false,
             restart_limit: 0,
             restart_delay: 100,
             depends_on: vec![],
+            health_check: None,
         }
     }
-
-    // TODO: Fix State mock - these tests require Tauri State wrapper
-    // #[tokio::test]
-    // async fn test_start_process_command() {
-    //     let state = test_state();
-    //     let config = test_config("test");
-    //
-    //     let result = start_process(config, state).await;
-    //     assert!(result.is_ok());
-    //
-    //     let info = result.unwrap();
-    //     assert_eq!(info.name, "test");
-    // }
-    //
-    // #[tokio::test]
-    // async fn test_list_processes_command() {
-    //     let state = test_state();
-    //
-    //     let result = list_processes(state).await;
-    //     assert!(result.is_ok());
-    //     assert_eq!(result.unwrap().len(), 0);
-    // }
-    //
-    // #[tokio::test]
-    // async fn test_stop_nonexistent_process() {
-    //     let state = test_state();
-    //
-    //     let result = stop_process("nonexistent".to_string(), state).await;
-    //     assert!(result.is_err());
-    // }
 }

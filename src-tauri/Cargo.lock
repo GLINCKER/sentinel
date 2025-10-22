@@ -3597,7 +3597,7 @@ dependencies = [
 
 [[package]]
 name = "sentinel"
-version = "0.1.0-alpha"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -3608,6 +3608,7 @@ dependencies = [
  "mockall",
  "predicates",
  "proptest",
+ "regex",
  "serde",
  "serde_json",
  "serde_yaml",

@@ -11,15 +11,17 @@
 -->
 
 <script lang="ts">
+  import type { Snippet } from 'svelte';
+
   interface Props {
     variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
     size?: 'sm' | 'md' | 'lg';
     disabled?: boolean;
     loading?: boolean;
     fullWidth?: boolean;
-    onclick?: () => void;
+    onclick?: (e?: MouseEvent) => void;
     type?: 'button' | 'submit' | 'reset';
-    children?: any;
+    children?: Snippet;
   }
 
   let {
@@ -177,6 +179,12 @@
     border-top-color: transparent;
     border-radius: 50%;
     animation: spin 0.6s linear infinite;
+  }
+
+  .glinr-btn-content {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
   }
 
   .glinr-btn-content-loading {

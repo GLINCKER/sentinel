@@ -4,6 +4,7 @@
 
 use crate::error::{Result, SentinelError};
 use crate::models::{Config, ProcessConfig};
+use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
@@ -43,11 +44,14 @@ impl ConfigManager {
             source,
         })?;
 
+        // Interpolate environment variables in the contents
+        let interpolated = Self::interpolate_env_vars(&contents);
+
         // Parse based on extension
         let config = if path.extension().and_then(|s| s.to_str()) == Some("json") {
-            Self::parse_json(&contents, path)?
+            Self::parse_json(&interpolated, path)?
         } else {
-            Self::parse_yaml(&contents, path)?
+            Self::parse_yaml(&interpolated, path)?
         };
 
         // Validate configuration
@@ -68,7 +72,7 @@ impl ConfigManager {
     /// use sentinel::models::Config;
     /// use std::path::Path;
     ///
-    /// # let config = Config { processes: vec![], settings: Default::default() };
+    /// # let config = Config { processes: vec![], settings: Default::default(), global_env: Default::default() };
     /// ConfigManager::save_to_file(&config, Path::new("sentinel.yaml"))?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
@@ -104,14 +108,17 @@ impl ConfigManager {
             processes: vec![ProcessConfig {
                 name: "example".to_string(),
                 command: "echo 'Hello from Sentinel'".to_string(),
+                args: vec![],
                 cwd: None,
                 env: HashMap::new(),
                 auto_restart: true,
                 restart_limit: 5,
                 restart_delay: 1000,
                 depends_on: vec![],
+                health_check: None,
             }],
             settings: Default::default(),
+            global_env: HashMap::new(),
         }
     }
 
@@ -246,6 +253,49 @@ impl ConfigManager {
             reason: format!("JSON parse error: {}", e),
         })
     }
+
+    /// Interpolates environment variables in config strings.
+    ///
+    /// Supports two syntax forms:
+    /// - `${VAR}` - Simple variable substitution
+    /// - `${VAR:-default}` - Variable with default value if unset
+    ///
+    /// # Arguments
+    /// * `input` - String with potential environment variable references
+    ///
+    /// # Returns
+    /// String with all environment variables interpolated
+    ///
+    /// # Examples
+    /// ```
+    /// use sentinel::core::ConfigManager;
+    /// std::env::set_var("TEST_PORT", "3000");
+    ///
+    /// let result = ConfigManager::interpolate_env_vars("http://localhost:${TEST_PORT}");
+    /// assert_eq!(result, "http://localhost:3000");
+    ///
+    /// let with_default = ConfigManager::interpolate_env_vars("${MISSING:-8080}");
+    /// assert_eq!(with_default, "8080");
+    /// ```
+    pub fn interpolate_env_vars(input: &str) -> String {
+        // Regex pattern to match ${VAR} or ${VAR:-default}
+        // Capture groups:
+        // 1: Variable name
+        // 2: Optional :- and default value
+        // 3: Default value (if present)
+        let re = Regex::new(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(:-([^}]*))?\}").unwrap();
+
+        re.replace_all(input, |caps: &regex::Captures| {
+            let var_name = &caps[1];
+            let default_value = caps.get(3).map(|m| m.as_str());
+
+            match std::env::var(var_name) {
+                Ok(value) => value,
+                Err(_) => default_value.unwrap_or(&caps[0]).to_string(),
+            }
+        })
+        .to_string()
+    }
 }
 
 #[cfg(test)]
@@ -285,25 +335,30 @@ settings:
                 ProcessConfig {
                     name: "dup".to_string(),
                     command: "cmd1".to_string(),
+                    args: vec![],
                     cwd: None,
                     env: HashMap::new(),
                     auto_restart: true,
                     restart_limit: 5,
                     restart_delay: 1000,
                     depends_on: vec![],
+                    health_check: None,
                 },
                 ProcessConfig {
                     name: "dup".to_string(),
                     command: "cmd2".to_string(),
+                    args: vec![],
                     cwd: None,
                     env: HashMap::new(),
                     auto_restart: true,
                     restart_limit: 5,
                     restart_delay: 1000,
                     depends_on: vec![],
+                    health_check: None,
                 },
             ],
             settings: Default::default(),
+            global_env: HashMap::new(),
         };
 
         let result = ConfigManager::validate(&config);
@@ -316,14 +371,17 @@ settings:
             processes: vec![ProcessConfig {
                 name: "test".to_string(),
                 command: "cmd".to_string(),
+                args: vec![],
                 cwd: None,
                 env: HashMap::new(),
                 auto_restart: true,
                 restart_limit: 5,
                 restart_delay: 1000,
                 depends_on: vec!["nonexistent".to_string()],
+                health_check: None,
             }],
             settings: Default::default(),
+            global_env: HashMap::new(),
         };
 
         let result = ConfigManager::validate(&config);
@@ -340,25 +398,30 @@ settings:
                 ProcessConfig {
                     name: "A".to_string(),
                     command: "cmd".to_string(),
+                    args: vec![],
                     cwd: None,
                     env: HashMap::new(),
                     auto_restart: true,
                     restart_limit: 5,
                     restart_delay: 1000,
                     depends_on: vec!["B".to_string()],
+                    health_check: None,
                 },
                 ProcessConfig {
                     name: "B".to_string(),
                     command: "cmd".to_string(),
+                    args: vec![],
                     cwd: None,
                     env: HashMap::new(),
                     auto_restart: true,
                     restart_limit: 5,
                     restart_delay: 1000,
                     depends_on: vec!["A".to_string()],
+                    health_check: None,
                 },
             ],
             settings: Default::default(),
+            global_env: HashMap::new(),
         };
 
         let result = ConfigManager::validate(&config);
@@ -389,5 +452,84 @@ settings:
         let loaded = ConfigManager::load_from_file(&path).unwrap();
         assert_eq!(loaded.processes.len(), config.processes.len());
         assert_eq!(loaded.processes[0].name, config.processes[0].name);
+    }
+
+    #[test]
+    fn test_interpolate_env_vars_simple() {
+        std::env::set_var("TEST_VAR", "test_value");
+
+        let result = ConfigManager::interpolate_env_vars("Value is ${TEST_VAR}");
+        assert_eq!(result, "Value is test_value");
+
+        std::env::remove_var("TEST_VAR");
+    }
+
+    #[test]
+    fn test_interpolate_env_vars_with_default() {
+        // Make sure variable doesn't exist
+        std::env::remove_var("NONEXISTENT_VAR");
+
+        let result = ConfigManager::interpolate_env_vars("${NONEXISTENT_VAR:-default_value}");
+        assert_eq!(result, "default_value");
+    }
+
+    #[test]
+    fn test_interpolate_env_vars_multiple() {
+        std::env::set_var("HOST", "localhost");
+        std::env::set_var("PORT", "3000");
+
+        let result = ConfigManager::interpolate_env_vars("http://${HOST}:${PORT}/api");
+        assert_eq!(result, "http://localhost:3000/api");
+
+        std::env::remove_var("HOST");
+        std::env::remove_var("PORT");
+    }
+
+    #[test]
+    fn test_interpolate_env_vars_missing_no_default() {
+        std::env::remove_var("MISSING");
+
+        // Should keep original syntax if no default provided
+        let result = ConfigManager::interpolate_env_vars("Value: ${MISSING}");
+        assert_eq!(result, "Value: ${MISSING}");
+    }
+
+    #[test]
+    fn test_interpolate_env_vars_with_numbers() {
+        std::env::set_var("VAR_123", "value");
+
+        let result = ConfigManager::interpolate_env_vars("${VAR_123}");
+        assert_eq!(result, "value");
+
+        std::env::remove_var("VAR_123");
+    }
+
+    #[test]
+    fn test_interpolate_env_vars_empty_default() {
+        std::env::remove_var("EMPTY_TEST");
+
+        let result = ConfigManager::interpolate_env_vars("${EMPTY_TEST:-}");
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn test_interpolate_env_vars_in_config() {
+        std::env::set_var("API_PORT", "8080");
+
+        let yaml = r#"
+processes:
+  - name: api
+    command: npm start
+    env:
+      PORT: ${API_PORT:-3000}
+settings:
+  logLevel: info
+"#;
+
+        let interpolated = ConfigManager::interpolate_env_vars(yaml);
+        assert!(interpolated.contains("PORT: 8080"));
+        assert!(!interpolated.contains("${API_PORT"));
+
+        std::env::remove_var("API_PORT");
     }
 }

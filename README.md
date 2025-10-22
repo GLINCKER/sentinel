@@ -2,6 +2,8 @@
 
 <div align="center">
 
+<img src="public/assets/sentinel-logo.svg" alt="Sentinel Logo" width="120" height="120" />
+
 **Process Manager & System Monitor for Developers**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

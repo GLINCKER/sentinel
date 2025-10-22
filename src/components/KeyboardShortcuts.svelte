@@ -15,6 +15,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { navigateTo } from '../stores/navigation';
   import { theme } from '../stores/settings';
+  import { stopAllProcesses, fetchProcesses } from '../stores/processes';
 
   let showHelp = $state(false);
 
@@ -31,7 +32,7 @@
     },
     {
       key: 's',
-      modifiers: ['ctrlKey'],
+      modifiers: ['ctrlKey', 'shiftKey'],
       action: () => navigateTo('settings'),
       description: 'Go to Settings'
     },
@@ -40,6 +41,18 @@
       modifiers: ['ctrlKey'],
       action: () => toggleTheme(),
       description: 'Toggle Theme'
+    },
+    {
+      key: 'r',
+      modifiers: ['ctrlKey'],
+      action: () => handleRefresh(),
+      description: 'Refresh Process List'
+    },
+    {
+      key: 'q',
+      modifiers: ['ctrlKey'],
+      action: () => handleStopAll(),
+      description: 'Stop All Processes'
     },
     {
       key: '/',
@@ -57,6 +70,18 @@
 
   function toggleTheme() {
     theme.update((t) => (t === 'dark' ? 'light' : 'dark'));
+  }
+
+  async function handleRefresh() {
+    await fetchProcesses();
+  }
+
+  async function handleStopAll() {
+    try {
+      await stopAllProcesses();
+    } catch (e) {
+      console.error('Failed to stop all processes:', e);
+    }
   }
 
   function handleKeyDown(event: KeyboardEvent) {
@@ -123,11 +148,15 @@
       </header>
 
       <div class="glinr-shortcuts-content">
-        {#each shortcuts.filter((s) => s.key !== 'Escape') as shortcut}
+        {#each shortcuts.filter((s) => s.key !== 'Escape') as shortcut (shortcut.key + shortcut.modifiers.join('-'))}
           <div class="glinr-shortcut-item">
             <div class="glinr-shortcut-keys">
               {#if shortcut.modifiers.includes('ctrlKey')}
                 <kbd class="glinr-kbd">{getModifierKey()}</kbd>
+                <span class="glinr-shortcut-plus">+</span>
+              {/if}
+              {#if shortcut.modifiers.includes('shiftKey')}
+                <kbd class="glinr-kbd">Shift</kbd>
                 <span class="glinr-shortcut-plus">+</span>
               {/if}
               <kbd class="glinr-kbd">{shortcut.key.toUpperCase()}</kbd>

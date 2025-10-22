@@ -13,16 +13,35 @@
 <script lang="ts">
   import type { ProcessInfo } from '../types';
   import GlinrButton from './GlinrButton.svelte';
+  import { Play, RotateCw, Square } from 'lucide-svelte';
 
   interface Props {
     process: ProcessInfo;
     onAction?: (action: 'start' | 'stop' | 'restart') => void;
     onClick?: () => void;
+    selected?: boolean;
+    onSelect?: (selected: boolean) => void;
+    selectionMode?: boolean;
   }
 
-  let { process, onAction, onClick }: Props = $props();
+  let {
+    process,
+    onAction,
+    onClick,
+    selected = false,
+    onSelect,
+    selectionMode = false
+  }: Props = $props();
 
-  function getStateColor(state: any): string {
+  type ProcessState =
+    | 'running'
+    | 'stopped'
+    | 'starting'
+    | 'stopping'
+    | { crashed: { exit_code: number } }
+    | { failed: { reason: string } };
+
+  function getStateColor(state: ProcessState): string {
     if (state === 'running') return 'success';
     if (state === 'stopped') return 'secondary';
     if (state === 'starting' || state === 'stopping') return 'info';
@@ -31,7 +50,7 @@
     return 'secondary';
   }
 
-  function getStateLabel(state: any): string {
+  function getStateLabel(state: ProcessState): string {
     if (state === 'running') return 'Running';
     if (state === 'stopped') return 'Stopped';
     if (state === 'starting') return 'Starting...';
@@ -74,6 +93,7 @@
 
 <article
   class="glinr-card sentinel-process-card"
+  class:selected
   role="button"
   tabindex="0"
   onclick={onClick}
@@ -84,6 +104,23 @@
     }
   }}
 >
+  <!-- Selection Checkbox -->
+  {#if selectionMode}
+    <div class="process-checkbox-wrapper">
+      <input
+        type="checkbox"
+        class="process-checkbox"
+        checked={selected}
+        onchange={(e) => {
+          e.stopPropagation();
+          onSelect?.(e.currentTarget.checked);
+        }}
+        onclick={(e) => e.stopPropagation()}
+        aria-label="Select {process.name}"
+      />
+    </div>
+  {/if}
+
   <!-- Header -->
   <header class="glinr-card-header">
     <h3 class="glinr-process-name">{process.name}</h3>
@@ -128,7 +165,8 @@
           onAction?.('start');
         }}
       >
-        ▶️ Start
+        <Play size={14} />
+        Start
       </GlinrButton>
     {:else if isRunning}
       <GlinrButton
@@ -139,7 +177,8 @@
           onAction?.('restart');
         }}
       >
-        🔄 Restart
+        <RotateCw size={14} />
+        Restart
       </GlinrButton>
       <GlinrButton
         variant="danger"
@@ -149,7 +188,8 @@
           onAction?.('stop');
         }}
       >
-        ⏹️ Stop
+        <Square size={14} />
+        Stop
       </GlinrButton>
     {/if}
   </footer>
@@ -157,12 +197,15 @@
 
 <style>
   .glinr-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg);
     padding: var(--space-lg);
-    transition: all var(--transition-fast);
+    transition: all var(--transition-base);
     cursor: pointer;
+    box-shadow: var(--shadow-xs);
   }
 
   .glinr-card:hover {
@@ -180,6 +223,33 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-lg);
+    position: relative;
+  }
+
+  .sentinel-process-card.selected {
+    border-color: var(--accent-primary);
+    background: linear-gradient(
+      135deg,
+      rgba(59, 130, 246, 0.05),
+      rgba(59, 130, 246, 0.02)
+    );
+    box-shadow:
+      0 0 0 2px rgba(59, 130, 246, 0.2),
+      var(--shadow-md);
+  }
+
+  .process-checkbox-wrapper {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 10;
+  }
+
+  .process-checkbox {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: var(--accent-primary);
   }
 
   /* Header */

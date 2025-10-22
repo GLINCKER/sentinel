@@ -25,13 +25,15 @@
 //!
 //! let config = ProcessConfig {
 //!     name: "api-server".to_string(),
-//!     command: "npm start".to_string(),
+//!     command: "npm".to_string(),
+//!     args: vec!["start".to_string()],
 //!     cwd: Some("./backend".into()),
 //!     env: HashMap::new(),
 //!     auto_restart: true,
 //!     restart_limit: 5,
 //!     restart_delay: 1000,
 //!     depends_on: vec![],
+//!     health_check: None,
 //! };
 //!
 //! let info = manager.start(config).await?;
@@ -80,6 +82,12 @@ pub use state::AppState;
 ///
 /// This is the main entry point called from `main.rs`.
 pub fn run() {
+    use tauri::{
+        menu::{Menu, MenuItem},
+        tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+        Manager,
+    };
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
@@ -93,12 +101,19 @@ pub fn run() {
             commands::get_process,
             commands::list_processes,
             commands::stop_all_processes,
+            // Process log commands
+            commands::get_process_logs,
+            commands::get_recent_process_logs,
+            commands::search_process_logs,
+            // Process health commands
+            commands::check_process_health,
+            commands::stop_process_gracefully,
             // System commands
             commands::get_system_stats,
             commands::get_process_stats,
             commands::get_system_info,
         ])
-        .setup(|_app| {
+        .setup(|app| {
             // Initialize tracing
             tracing_subscriber::fmt()
                 .with_env_filter(
@@ -108,6 +123,48 @@ pub fn run() {
                 .init();
 
             tracing::info!("Sentinel starting up...");
+
+            let show_i = MenuItem::with_id(app, "show", "Show Sentinel", true, None::<&str>)?;
+            let hide_i = MenuItem::with_id(app, "hide", "Hide Window", true, None::<&str>)?;
+            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+
+            let menu = Menu::with_items(app, &[&show_i, &hide_i, &quit_i])?;
+
+            let _tray = TrayIconBuilder::new()
+                .menu(&menu)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    "hide" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.hide();
+                        }
+                    }
+                    "quit" => {
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
+
             Ok(())
         })
         .run(tauri::generate_context!())
