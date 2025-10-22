@@ -1,12 +1,13 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { currentView } from './stores/navigation';
-  import { theme } from './stores/settings';
-  import Dashboard from './views/Dashboard.svelte';
-  import ProcessDetail from './views/ProcessDetail.svelte';
-  import Settings from './views/Settings.svelte';
-  import Sidebar from './components/Sidebar.svelte';
-  import KeyboardShortcuts from './components/KeyboardShortcuts.svelte';
+	import { onMount } from 'svelte';
+	import { currentView } from './stores/navigation';
+	import { theme } from './stores/settings';
+	import Dashboard from './views/Dashboard.svelte';
+	import ProcessDetail from './views/ProcessDetail.svelte';
+	import PortMapView from './views/PortMapView.svelte';
+	import Settings from './views/Settings.svelte';
+	import Sidebar from './components/Sidebar.svelte';
+	import KeyboardShortcuts from './components/KeyboardShortcuts.svelte';
 
   let mounted = $state(false);
 
@@ -68,13 +69,15 @@
     <Sidebar />
 
     <main class="main-content">
-      {#if $currentView === 'dashboard'}
-        <Dashboard />
-      {:else if $currentView === 'process-detail'}
-        <ProcessDetail />
-      {:else if $currentView === 'settings'}
-        <Settings />
-      {/if}
+			{#if $currentView === 'dashboard'}
+				<Dashboard />
+			{:else if $currentView === 'process-detail'}
+				<ProcessDetail />
+			{:else if $currentView === 'port-map'}
+				<PortMapView />
+			{:else if $currentView === 'settings'}
+				<Settings />
+			{/if}
     </main>
   </div>
 
