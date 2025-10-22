@@ -10,29 +10,64 @@
 
   let mounted = $state(false);
 
+  // Check if system prefers dark mode
+  function getSystemPrefersDark(): boolean {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
+  // Determine if dark mode should be active
+  function shouldUseDarkMode(themeValue: string): boolean {
+    if (themeValue === 'dark') return true;
+    if (themeValue === 'light') return false;
+    if (themeValue === 'system') return getSystemPrefersDark();
+    return false;
+  }
+
   onMount(() => {
     // Apply saved theme
-    const savedTheme = localStorage.getItem('sentinel-theme') || 'dark';
-    theme.set(savedTheme);
-    document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+    const savedTheme = localStorage.getItem('sentinel-theme') || 'system';
+    theme.set(savedTheme as 'light' | 'dark' | 'system');
+    document.documentElement.classList.toggle(
+      'dark',
+      shouldUseDarkMode(savedTheme)
+    );
+
+    // Listen for system theme changes
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = () => {
+      if ($theme === 'system') {
+        document.documentElement.classList.toggle(
+          'dark',
+          getSystemPrefersDark()
+        );
+      }
+    };
+    mediaQuery.addEventListener('change', handleChange);
 
     mounted = true;
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleChange);
+    };
   });
 
   // Reactive theme class updates
   $effect(() => {
     if (mounted) {
-      document.documentElement.classList.toggle('dark', $theme === 'dark');
+      document.documentElement.classList.toggle(
+        'dark',
+        shouldUseDarkMode($theme)
+      );
       localStorage.setItem('sentinel-theme', $theme);
     }
   });
 </script>
 
-<div class="app" class:dark={$theme === 'dark'}>
+<div class="app" class:dark={shouldUseDarkMode($theme)}>
   <div class="app-container">
     <Sidebar />
 
-    <main class="main-content" role="main">
+    <main class="main-content">
       {#if $currentView === 'dashboard'}
         <Dashboard />
       {:else if $currentView === 'process-detail'}

@@ -1,8 +1,9 @@
 //! System resource monitoring.
 //!
 //! This module provides real-time monitoring of system resources including
-//! CPU, memory, and disk I/O.
+//! CPU, memory, and disk I/O with historical data tracking.
 
+use crate::core::metrics_buffer::MetricsBuffer;
 use crate::models::{CpuStats, DiskStats, MemoryStats, SystemStats};
 use chrono::Utc;
 use std::time::Instant;
@@ -27,9 +28,12 @@ pub struct SystemMonitor {
     system: System,
     /// Disk information.
     disks: Disks,
-    /// Last disk I/O measurement.
-    #[allow(dead_code)]
+    /// Last disk I/O measurement (timestamp, total_read_bytes, total_write_bytes).
     last_disk_io: Option<(Instant, u64, u64)>,
+    /// Historical CPU usage (last 60 seconds at 1Hz sampling).
+    cpu_history: MetricsBuffer<f32>,
+    /// Historical memory usage (last 60 seconds at 1Hz sampling).
+    memory_history: MetricsBuffer<u64>,
 }
 
 impl SystemMonitor {
@@ -51,6 +55,8 @@ impl SystemMonitor {
             system,
             disks: Disks::new_with_refreshed_list(),
             last_disk_io: None,
+            cpu_history: MetricsBuffer::new(60), // 60 seconds of history
+            memory_history: MetricsBuffer::new(60), // 60 seconds of history
         }
     }
 
@@ -85,9 +91,10 @@ impl SystemMonitor {
         self.system.refresh_memory();
     }
 
-    /// Gets current system statistics.
+    /// Gets current system statistics and records them to history.
     ///
     /// Returns a snapshot of CPU, memory, and disk metrics.
+    /// Also pushes current CPU and memory usage to historical buffers.
     ///
     /// # Examples
     /// ```
@@ -100,10 +107,18 @@ impl SystemMonitor {
     /// assert!(stats.memory.total > 0);
     /// ```
     pub fn get_stats(&mut self) -> SystemStats {
+        let cpu = self.get_cpu_stats();
+        let memory = self.get_memory_stats();
+        let disk = self.get_disk_stats();
+
+        // Record to history buffers
+        self.cpu_history.push(cpu.overall);
+        self.memory_history.push(memory.used);
+
         SystemStats {
-            cpu: self.get_cpu_stats(),
-            memory: self.get_memory_stats(),
-            disk: self.get_disk_stats(),
+            cpu,
+            memory,
+            disk,
             timestamp: Utc::now().timestamp(),
         }
     }
@@ -142,12 +157,12 @@ impl SystemMonitor {
 
     /// Gets disk I/O statistics.
     ///
-    /// Calculates read/write bytes per second by comparing with the last measurement.
+    /// Calculates read/write bytes per second by aggregating all process I/O.
     ///
     /// # Returns
     /// Disk I/O information.
     fn get_disk_stats(&mut self) -> DiskStats {
-        let _now = Instant::now();
+        let now = Instant::now();
 
         // Get total disk space from first disk
         let (total_space, available_space) = self
@@ -157,10 +172,35 @@ impl SystemMonitor {
             .map(|disk| (disk.total_space(), disk.available_space()))
             .unwrap_or((0, 0));
 
-        // For now, return zero I/O (sysinfo doesn't provide disk I/O easily on all platforms)
-        // In a production version, we'd use platform-specific APIs or track process I/O
-        let read_bytes_per_sec = 0;
-        let write_bytes_per_sec = 0;
+        // Aggregate disk I/O from all processes
+        let mut total_read_bytes = 0u64;
+        let mut total_write_bytes = 0u64;
+
+        for process in self.system.processes().values() {
+            let disk_usage = process.disk_usage();
+            total_read_bytes += disk_usage.total_read_bytes;
+            total_write_bytes += disk_usage.total_written_bytes;
+        }
+
+        // Calculate bytes per second
+        let (read_bytes_per_sec, write_bytes_per_sec) =
+            if let Some((last_time, last_read, last_write)) = self.last_disk_io {
+                let elapsed = now.duration_since(last_time).as_secs_f64();
+                if elapsed > 0.0 {
+                    let read_rate =
+                        ((total_read_bytes.saturating_sub(last_read)) as f64 / elapsed) as u64;
+                    let write_rate =
+                        ((total_write_bytes.saturating_sub(last_write)) as f64 / elapsed) as u64;
+                    (read_rate, write_rate)
+                } else {
+                    (0, 0)
+                }
+            } else {
+                (0, 0)
+            };
+
+        // Store current measurement for next calculation
+        self.last_disk_io = Some((now, total_read_bytes, total_write_bytes));
 
         DiskStats {
             read_bytes_per_sec,
@@ -170,7 +210,7 @@ impl SystemMonitor {
         }
     }
 
-    /// Gets resource usage for a specific process.
+    /// Gets basic resource usage for a specific process (deprecated in favor of get_process_metrics).
     ///
     /// # Arguments
     /// * `pid` - Process ID
@@ -191,14 +231,8 @@ impl SystemMonitor {
     /// }
     /// ```
     pub fn get_process_stats(&self, pid: u32) -> Option<(f32, u64)> {
-        use sysinfo::Pid;
-
-        let pid = Pid::from_u32(pid);
-        self.system.process(pid).map(|process| {
-            let cpu = process.cpu_usage();
-            let memory = process.memory();
-            (cpu, memory)
-        })
+        self.get_process_metrics(pid)
+            .map(|(cpu, mem, _, _)| (cpu, mem))
     }
 
     /// Gets the number of running processes.
@@ -239,6 +273,73 @@ impl SystemMonitor {
     /// System hostname.
     pub fn hostname(&self) -> Option<String> {
         System::host_name()
+    }
+
+    /// Gets CPU usage history (last N seconds).
+    ///
+    /// Returns up to 60 seconds of historical CPU usage data.
+    ///
+    /// # Arguments
+    /// * `seconds` - Number of seconds of history to retrieve (max 60)
+    ///
+    /// # Returns
+    /// Vector of timed CPU usage metrics (most recent first)
+    pub fn get_cpu_history(
+        &self,
+        seconds: usize,
+    ) -> Vec<crate::core::metrics_buffer::TimedMetric<f32>> {
+        self.cpu_history.get_last_n(seconds)
+    }
+
+    /// Gets memory usage history (last N seconds).
+    ///
+    /// Returns up to 60 seconds of historical memory usage data.
+    ///
+    /// # Arguments
+    /// * `seconds` - Number of seconds of history to retrieve (max 60)
+    ///
+    /// # Returns
+    /// Vector of timed memory usage metrics in bytes (most recent first)
+    pub fn get_memory_history(
+        &self,
+        seconds: usize,
+    ) -> Vec<crate::core::metrics_buffer::TimedMetric<u64>> {
+        self.memory_history.get_last_n(seconds)
+    }
+
+    /// Gets detailed process metrics including disk I/O.
+    ///
+    /// # Arguments
+    /// * `pid` - Process ID
+    ///
+    /// # Returns
+    /// * `Some((cpu_percent, memory_bytes, disk_read_bytes, disk_write_bytes))` - Resource usage
+    /// * `None` - Process not found
+    ///
+    /// # Examples
+    /// ```
+    /// use sentinel::core::SystemMonitor;
+    ///
+    /// let mut monitor = SystemMonitor::new();
+    /// monitor.refresh();
+    ///
+    /// if let Some((cpu, mem, disk_read, disk_write)) = monitor.get_process_metrics(std::process::id()) {
+    ///     println!("Process: CPU={:.2}%, Memory={} bytes", cpu, mem);
+    ///     println!("Disk I/O: Read={}, Write={}", disk_read, disk_write);
+    /// }
+    /// ```
+    pub fn get_process_metrics(&self, pid: u32) -> Option<(f32, u64, u64, u64)> {
+        use sysinfo::Pid;
+
+        let pid = Pid::from_u32(pid);
+        self.system.process(pid).map(|process| {
+            let cpu = process.cpu_usage();
+            let memory = process.memory();
+            let disk_usage = process.disk_usage();
+            let disk_read = disk_usage.read_bytes;
+            let disk_write = disk_usage.written_bytes;
+            (cpu, memory, disk_read, disk_write)
+        })
     }
 }
 

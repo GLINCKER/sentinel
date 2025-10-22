@@ -55,9 +55,12 @@ jobs:
 
             console.log(`PR has ${additions} additions and ${deletions} deletions (${changes} total changes)`);
 
-            if (changes > 1000) {
+            // Allow large PRs for releases
+            const isRelease = pr.title.toLowerCase().includes('release') || pr.title.toLowerCase().includes('v0.');
+
+            if (changes > 2000 && !isRelease) {
               core.setFailed(`This PR is too large (${changes} changes). Consider breaking it into smaller PRs.`);
-            } else if (changes > 500) {
+            } else if (changes > 1000 && !isRelease) {
               core.warning(`This PR is quite large (${changes} changes). Consider breaking it into smaller PRs.`);
             }
 

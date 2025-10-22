@@ -11,11 +11,74 @@
 -->
 
 <script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
   import { selectedProcess, navigateBack } from '../stores/navigation';
-  import { processes } from '../stores/processes';
+  import { processes, stopProcess, restartProcess } from '../stores/processes';
+  import { invoke } from '@tauri-apps/api/core';
   import GlinrButton from '../components/GlinrButton.svelte';
+  import GlinrTerminal from '../components/GlinrTerminal.svelte';
 
   let process = $derived($processes.find((p) => p.name === $selectedProcess));
+  let logs = $state<
+    Array<{ timestamp: string; line: string; stream: 'stdout' | 'stderr' }>
+  >([]);
+  let autoScroll = $state(true);
+
+  async function fetchLogs() {
+    if (!$selectedProcess) return;
+
+    try {
+      const result = await invoke<string[]>('get_recent_process_logs', {
+        name: $selectedProcess,
+        lines: 1000
+      });
+
+      logs = result.map((line) => ({
+        timestamp: new Date().toISOString().split('T')[1].substring(0, 8),
+        line,
+        stream: 'stdout' as const
+      }));
+    } catch (e) {
+      console.error('Failed to fetch logs:', e);
+      logs = [
+        {
+          timestamp: new Date().toISOString().split('T')[1].substring(0, 8),
+          line: `Error fetching logs: ${e}`,
+          stream: 'stderr' as const
+        }
+      ];
+    }
+  }
+
+  async function handleStop() {
+    if (!$selectedProcess) return;
+    try {
+      await stopProcess($selectedProcess);
+    } catch (e) {
+      console.error('Failed to stop process:', e);
+    }
+  }
+
+  async function handleRestart() {
+    if (!$selectedProcess) return;
+    try {
+      await restartProcess($selectedProcess);
+      await fetchLogs();
+    } catch (e) {
+      console.error('Failed to restart process:', e);
+    }
+  }
+
+  let pollInterval: number;
+
+  onMount(() => {
+    fetchLogs();
+    pollInterval = setInterval(fetchLogs, 2000) as unknown as number;
+  });
+
+  onDestroy(() => {
+    clearInterval(pollInterval);
+  });
 </script>
 
 <div class="glinr-process-detail">
@@ -34,15 +97,46 @@
         <p>Process not found</p>
       </div>
     {:else}
-      <!-- TODO: Implement logs viewer and resource graphs -->
-      <div class="glinr-placeholder">
-        <h2>Coming Soon</h2>
-        <p>Process logs and resource graphs will be implemented here</p>
-        <ul>
-          <li>Real-time log viewer (last 1000 lines)</li>
-          <li>CPU/Memory usage graphs</li>
-          <li>Process actions (restart, stop, edit config)</li>
-        </ul>
+      <div class="glinr-process-info">
+        <div class="info-card">
+          <h3>Status</h3>
+          <p
+            class="status-{typeof process.state === 'string'
+              ? process.state
+              : 'crashed'}"
+          >
+            {typeof process.state === 'string' ? process.state : 'crashed'}
+          </p>
+        </div>
+
+        <div class="info-card">
+          <h3>PID</h3>
+          <p>{process.pid ?? 'N/A'}</p>
+        </div>
+
+        <div class="info-card">
+          <h3>Uptime</h3>
+          <p>{process.uptime ?? 'N/A'}</p>
+        </div>
+
+        <div class="info-card">
+          <h3>Restarts</h3>
+          <p>{process.restart_count ?? 0}</p>
+        </div>
+
+        <div class="info-actions">
+          <GlinrButton variant="primary" onclick={handleRestart}
+            >Restart</GlinrButton
+          >
+          <GlinrButton variant="danger" onclick={handleStop}>Stop</GlinrButton>
+        </div>
+      </div>
+
+      <div class="glinr-logs-section">
+        <h3>Process Logs</h3>
+        <div class="terminal-wrapper">
+          <GlinrTerminal {logs} bind:autoScroll processName={process.name} />
+        </div>
       </div>
     {/if}
   </div>
@@ -85,29 +179,80 @@
     flex: 1;
     overflow-y: auto;
     padding: var(--space-2xl);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xl);
   }
 
-  .glinr-placeholder {
+  .glinr-process-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--space-lg);
+  }
+
+  .info-card {
     background: var(--bg-secondary);
-    border: 2px dashed var(--border-color);
+    border: 1px solid var(--border-light);
     border-radius: var(--radius-lg);
-    padding: var(--space-2xl);
-    text-align: center;
+    padding: var(--space-lg);
   }
 
-  .glinr-placeholder h2 {
+  .info-card h3 {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin: 0 0 var(--space-sm) 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .info-card p {
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+  }
+
+  .info-card .status-running {
+    color: var(--success-color);
+  }
+
+  .info-card .status-stopped {
+    color: var(--text-tertiary);
+  }
+
+  .info-card .status-crashed {
+    color: var(--danger-color);
+  }
+
+  .info-actions {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+  }
+
+  .glinr-logs-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 400px;
+  }
+
+  .glinr-logs-section h3 {
+    font-size: var(--font-size-lg);
     color: var(--text-primary);
     margin: 0 0 var(--space-md) 0;
   }
 
-  .glinr-placeholder p {
-    color: var(--text-secondary);
-    margin: 0 0 var(--space-lg) 0;
+  .terminal-wrapper {
+    flex: 1;
+    min-height: 0;
   }
 
-  .glinr-placeholder ul {
-    text-align: left;
-    display: inline-block;
+  .glinr-empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
     color: var(--text-tertiary);
   }
 </style>

@@ -3,9 +3,15 @@
 #
 # Fast, parallel Git hooks for Rust + Node.js polyglot project
 # https://github.com/evilmartians/lefthook
+#
+# Philosophy (2024 Best Practices):
+# - Pre-commit: FAST checks only (<10s) - formatting, linting, syntax
+# - Pre-push: SLOW checks (tests, builds) - comprehensive validation
+# - CI: ENFORCED - canonical source of truth (can't be bypassed)
 
 # Pre-commit hook
-# Runs formatting and linting on staged files
+# Goal: Fast feedback on code quality (<10 seconds)
+# Runs: Formatting and linting ONLY (no tests!)
 pre-commit:
   parallel: true
   commands:
@@ -16,21 +22,29 @@ pre-commit:
       stage_fixed: true
 
     frontend-eslint:
-      glob: "src/**/*.js"
+      glob: "src/**/*.{js,svelte,css,html}"
       run: pnpm exec eslint --fix {staged_files}
       stage_fixed: true
 
-    # Backend: Format Rust code
+    # Backend: Format and lint Rust code
     rust-fmt:
       glob: "src-tauri/**/*.rs"
       run: cd src-tauri && cargo fmt --all
       stage_fixed: true
 
-    # CLI: Format Rust code
+    rust-clippy:
+      glob: "src-tauri/**/*.rs"
+      run: cd src-tauri && cargo clippy --all-targets --quiet -- -D warnings
+
+    # CLI: Format and lint Rust code
     cli-fmt:
       glob: "cli/**/*.rs"
       run: cd cli && cargo fmt --all
       stage_fixed: true
+
+    cli-clippy:
+      glob: "cli/**/*.rs"
+      run: cd cli && cargo clippy --all-targets --quiet -- -D warnings
 
 # Commit-msg hook
 # Validates commit messages using commitlint
@@ -39,10 +53,27 @@ commit-msg:
     commitlint:
       run: pnpm exec commitlint --edit {1}
 
-# Pre-push hook (optional, disabled by default)
-# Uncomment to run tests before pushing
-# pre-push:
-#   parallel: true
-#   commands:
-#     quick-test:
-#       run: ./scripts/quick-test.sh
+# Pre-push hook
+# Goal: Comprehensive validation before pushing to remote (can take time)
+# Runs: Tests, builds, final lint checks - mirrors CI workflow
+# Why: Catch issues locally before wasting GitHub Actions minutes
+pre-push:
+  parallel: false
+  commands:
+    # Step 1: Run all tests (slowest part)
+    backend-tests:
+      run: cd src-tauri && cargo test --all --quiet
+
+    frontend-tests:
+      run: pnpm run test --run --silent
+
+    # Step 2: Final lint check (backup, should already pass from pre-commit)
+    backend-lint:
+      run: cd src-tauri && cargo clippy --all-targets --quiet -- -D warnings
+
+    frontend-lint:
+      run: pnpm run lint && pnpm run format:check
+
+    # Step 3: Production build verification (ensures build doesn't break)
+    verify-build:
+      run: pnpm run build

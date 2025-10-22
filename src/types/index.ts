@@ -35,6 +35,45 @@ export interface ProcessInfo {
   started_at: string | null;
   cpu_usage: number;
   memory_usage: number;
+  uptime?: string;
+  restart_count?: number;
+}
+
+/**
+ * CPU statistics
+ *
+ * @glinr/sentinel-core
+ */
+export interface CpuStats {
+  overall: number;
+  cores: number[];
+  core_count: number;
+}
+
+/**
+ * Memory statistics
+ *
+ * @glinr/sentinel-core
+ */
+export interface MemoryStats {
+  total: number;
+  used: number;
+  available: number;
+  swap_total: number;
+  swap_used: number;
+  usage_percent: number;
+}
+
+/**
+ * Disk statistics
+ *
+ * @glinr/sentinel-core
+ */
+export interface DiskStats {
+  read_bytes_per_sec: number;
+  write_bytes_per_sec: number;
+  total_space: number;
+  available_space: number;
 }
 
 /**
@@ -43,12 +82,10 @@ export interface ProcessInfo {
  * @glinr/sentinel-core
  */
 export interface SystemStats {
-  cpu_usage: number;
-  memory_used: number;
-  memory_total: number;
-  disk_used: number;
-  disk_total: number;
-  uptime: number;
+  cpu: CpuStats;
+  memory: MemoryStats;
+  disk: DiskStats;
+  timestamp: number;
 }
 
 /**

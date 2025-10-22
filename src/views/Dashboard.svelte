@@ -11,7 +11,8 @@
 -->
 
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
+  import { invoke } from '@tauri-apps/api/core';
   import {
     processes,
     systemStats,
@@ -21,32 +22,65 @@
     restartProcess
   } from '../stores/processes';
   import { navigateToProcess } from '../stores/navigation';
-  import type { ProcessInfo } from '../types';
+  import { settings } from '../stores/settings';
+  import { metricsHistory } from '../stores/metricsHistory';
   import GlinrProcessCard from '../components/GlinrProcessCard.svelte';
   import GlinrSystemMetrics from '../components/GlinrSystemMetrics.svelte';
-  import GlinrButton from '../components/GlinrButton.svelte';
+  import PollingControl from '../components/PollingControl.svelte';
+  import ProcessSearch from '../components/ProcessSearch.svelte';
+  import { Play, Square, Package } from 'lucide-svelte';
 
   let stopPolling: (() => void) | null = null;
-  let selectedProcesses = $state<Set<string>>(new Set());
   let isPerformingAction = $state(false);
+  let systemUptime = $state<number>(0);
+  let searchQuery = $state('');
 
+  // Fetch system uptime on mount and periodically
   onMount(() => {
-    stopPolling = startPolling(2000); // Poll every 2 seconds
+    const fetchUptime = async () => {
+      try {
+        const info = (await invoke('get_system_info')) as { uptime: number };
+        systemUptime = info.uptime;
+      } catch (err) {
+        console.error('Failed to fetch system uptime:', err);
+      }
+    };
+
+    fetchUptime();
+    const uptimeInterval = setInterval(fetchUptime, 60000); // Update every minute
+
+    return () => clearInterval(uptimeInterval);
   });
 
-  onDestroy(() => {
-    if (stopPolling) {
-      stopPolling();
+  // Add system stats to metrics history whenever it updates
+  $effect(() => {
+    if ($systemStats) {
+      metricsHistory.addDataPoint($systemStats);
     }
   });
 
-  function getProcessStateClass(state: any): string {
-    if (state === 'running') return 'running';
-    if (state === 'stopped') return 'stopped';
-    if (typeof state === 'object' && 'crashed' in state) return 'crashed';
-    if (typeof state === 'object' && 'failed' in state) return 'failed';
-    return 'unknown';
-  }
+  // Restart polling when interval changes
+  $effect(() => {
+    if (stopPolling) {
+      stopPolling();
+    }
+    stopPolling = startPolling($settings.pollingInterval);
+
+    return () => {
+      if (stopPolling) {
+        stopPolling();
+      }
+    };
+  });
+
+  // Filter processes based on search query
+  let filteredProcesses = $derived(
+    searchQuery.trim()
+      ? $processes.filter((p) =>
+          p.name.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : $processes
+  );
 
   async function handleStartAll() {
     isPerformingAction = true;
@@ -101,33 +135,35 @@
 </script>
 
 <div class="glinr-dashboard">
-  <!-- Header -->
-  <header class="glinr-dashboard-header">
-    <div class="glinr-header-content">
-      <h1 class="glinr-dashboard-title">Dashboard</h1>
-      <p class="glinr-dashboard-subtitle">
+  <!-- Header with Integrated Title Bar -->
+  <header class="glinr-dashboard-header" data-tauri-drag-region>
+    <div class="glinr-header-content" data-tauri-drag-region>
+      <h1 class="glinr-dashboard-title" data-tauri-drag-region>Dashboard</h1>
+      <p class="glinr-dashboard-subtitle" data-tauri-drag-region>
         Monitor and manage your development processes
       </p>
     </div>
 
     <div class="glinr-header-actions">
-      <GlinrButton
-        variant="secondary"
+      <button
+        class="glinr-action-btn glinr-action-btn-start"
         disabled={isPerformingAction}
         onclick={handleStartAll}
-        aria-label="Start all stopped processes"
+        title="Start all stopped processes"
       >
-        ▶️ Start All
-      </GlinrButton>
+        <Play size={14} />
+        <span>Start All</span>
+      </button>
 
-      <GlinrButton
-        variant="secondary"
+      <button
+        class="glinr-action-btn glinr-action-btn-stop"
         disabled={isPerformingAction}
         onclick={handleStopAll}
-        aria-label="Stop all running processes"
+        title="Stop all running processes"
       >
-        ⏹️ Stop All
-      </GlinrButton>
+        <Square size={14} />
+        <span>Stop All</span>
+      </button>
     </div>
   </header>
 
@@ -135,28 +171,45 @@
   <div class="glinr-dashboard-content">
     <!-- System Metrics -->
     <section class="glinr-metrics-section" aria-label="System metrics">
-      <h2 class="glinr-section-title">System Metrics</h2>
-      <GlinrSystemMetrics stats={$systemStats} />
+      <div class="glinr-section-header">
+        <h2 class="glinr-section-title">System Metrics</h2>
+        <PollingControl />
+      </div>
+      <GlinrSystemMetrics stats={$systemStats} uptime={systemUptime} />
     </section>
 
     <!-- Process List -->
     <section class="glinr-processes-section" aria-label="Process list">
       <div class="glinr-section-header">
         <h2 class="glinr-section-title">Processes</h2>
-        <span class="glinr-process-count">{$processes.length} total</span>
+        <span class="glinr-process-count"
+          >{filteredProcesses.length} of {$processes.length}</span
+        >
+      </div>
+
+      <div class="glinr-process-controls">
+        <ProcessSearch bind:value={searchQuery} />
       </div>
 
       {#if $processes.length === 0}
         <div class="glinr-empty-state">
-          <p class="glinr-empty-icon">📦</p>
+          <Package size={48} class="glinr-empty-icon" />
           <h3 class="glinr-empty-title">No Processes Configured</h3>
           <p class="glinr-empty-text">
             Add processes to your configuration file to get started.
           </p>
         </div>
+      {:else if filteredProcesses.length === 0}
+        <div class="glinr-empty-state">
+          <Package size={48} class="glinr-empty-icon" />
+          <h3 class="glinr-empty-title">No Processes Found</h3>
+          <p class="glinr-empty-text">
+            No processes match "{searchQuery}"
+          </p>
+        </div>
       {:else}
         <div class="glinr-process-grid">
-          {#each $processes as process (process.name)}
+          {#each filteredProcesses as process (process.name)}
             <GlinrProcessCard
               {process}
               onAction={(action) => handleProcessAction(process.name, action)}
@@ -178,37 +231,91 @@
     background: var(--bg-primary);
   }
 
-  /* Header */
+  /* Header - Integrated with Title Bar */
   .glinr-dashboard-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-xl) var(--space-2xl);
-    border-bottom: 1px solid var(--border-light);
-    background: var(--bg-primary);
+    padding: var(--space-lg) var(--space-xl);
+    padding-left: var(--space-xl); /* Align with content */
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    background: transparent;
     flex-shrink: 0;
+    min-height: 64px;
   }
 
   .glinr-header-content {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
   }
 
   .glinr-dashboard-title {
-    font-size: var(--font-size-3xl);
+    font-size: var(--font-size-lg);
     font-weight: 700;
     color: var(--text-primary);
-    margin: 0 0 var(--space-xs) 0;
+    margin: 0;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
   }
 
   .glinr-dashboard-subtitle {
-    font-size: var(--font-size-base);
-    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
     margin: 0;
+    font-weight: 500;
   }
 
   .glinr-header-actions {
     display: flex;
-    gap: var(--space-md);
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Compact Action Buttons */
+  .glinr-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    font-family: inherit;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+
+  .glinr-action-btn:hover:not(:disabled) {
+    background: var(--bg-hover);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+    transform: translateY(-1px);
+  }
+
+  .glinr-action-btn:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  .glinr-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .glinr-action-btn-start:hover:not(:disabled) {
+    background: var(--success-bg);
+    border-color: var(--success);
+    color: var(--success);
+  }
+
+  .glinr-action-btn-stop:hover:not(:disabled) {
+    background: var(--error-bg);
+    border-color: var(--error);
+    color: var(--error);
   }
 
   /* Main Content */
@@ -220,7 +327,14 @@
   }
 
   .glinr-metrics-section {
-    margin-bottom: var(--space-2xl);
+    margin-bottom: var(--space-3xl);
+  }
+
+  .glinr-metrics-charts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    gap: var(--space-lg);
+    margin-top: var(--space-lg);
   }
 
   .glinr-processes-section {
@@ -234,19 +348,26 @@
     margin-bottom: var(--space-lg);
   }
 
+  .glinr-process-controls {
+    margin-bottom: var(--space-xl);
+  }
+
   .glinr-section-title {
     font-size: var(--font-size-xl);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text-primary);
-    margin: 0 0 var(--space-lg) 0;
+    margin: 0;
+    letter-spacing: -0.02em;
   }
 
   .glinr-process-count {
     font-size: var(--font-size-sm);
-    color: var(--text-secondary);
-    background: var(--bg-secondary);
-    padding: var(--space-xs) var(--space-md);
-    border-radius: var(--radius-md);
+    font-weight: 600;
+    color: var(--accent-primary);
+    background: rgba(59, 130, 246, 0.08);
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    border: 1px solid rgba(59, 130, 246, 0.2);
   }
 
   /* Process Grid */
@@ -259,28 +380,46 @@
   /* Empty State */
   .glinr-empty-state {
     text-align: center;
-    padding: var(--space-2xl);
-    background: var(--bg-secondary);
-    border-radius: var(--radius-lg);
+    padding: var(--space-4xl) var(--space-2xl);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-radius: var(--radius-xl);
     border: 2px dashed var(--border-color);
+    transition: all var(--transition-base);
   }
 
-  .glinr-empty-icon {
-    font-size: 4rem;
-    margin: 0 0 var(--space-lg) 0;
+  .glinr-empty-state:hover {
+    border-color: var(--accent-primary);
+    background: rgba(59, 130, 246, 0.02);
+  }
+
+  :global(.glinr-empty-icon) {
+    color: var(--text-tertiary);
+    margin-bottom: var(--space-xl);
+    opacity: 0.6;
+    transition: all var(--transition-base);
+  }
+
+  .glinr-empty-state:hover :global(.glinr-empty-icon) {
+    color: var(--accent-primary);
+    opacity: 1;
+    transform: scale(1.05);
   }
 
   .glinr-empty-title {
-    font-size: var(--font-size-xl);
-    font-weight: 600;
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
     color: var(--text-primary);
-    margin: 0 0 var(--space-sm) 0;
+    margin: 0 0 var(--space-md) 0;
+    letter-spacing: -0.02em;
   }
 
   .glinr-empty-text {
     font-size: var(--font-size-base);
     color: var(--text-secondary);
     margin: 0;
+    line-height: 1.6;
   }
 
   /* Responsive */
