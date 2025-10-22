@@ -21,7 +21,8 @@
     PanelLeftOpen,
     Sun,
     Moon,
-    Monitor
+    Monitor,
+    Network
   } from 'lucide-svelte';
   import { IconButton, NavButton, StatusBadge } from '../lib/components';
   import type { ComponentType } from 'svelte';
@@ -41,6 +42,11 @@
       label: 'Dashboard',
       icon: LayoutDashboard,
       badge: $crashedProcesses.length > 0 ? $crashedProcesses.length : undefined
+    },
+    {
+      id: 'port-map',
+      label: 'Port Map',
+      icon: Network
     }
   ]);
 

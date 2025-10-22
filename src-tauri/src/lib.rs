@@ -71,6 +71,7 @@
 pub mod commands;
 pub mod core;
 pub mod error;
+pub mod features;
 pub mod models;
 pub mod state;
 
@@ -112,6 +113,10 @@ pub fn run() {
             commands::get_system_stats,
             commands::get_process_stats,
             commands::get_system_info,
+            // Port discovery commands
+            features::port_discovery::scan_ports,
+            features::port_discovery::kill_process_by_port,
+            features::port_discovery::get_port_info,
         ])
         .setup(|app| {
             // Initialize tracing

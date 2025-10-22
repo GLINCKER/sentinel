@@ -8,16 +8,22 @@ export default [
   js.configs.recommended,
   ...tseslint.configs.recommended,
   ...svelte.configs['flat/recommended'],
-  {
-    files: ['**/*.svelte'],
-    languageOptions: {
-      parser: svelteParser,
-      parserOptions: {
-        parser: tseslint.parser,
-        extraFileExtensions: ['.svelte'],
-      },
-    },
-  },
+	{
+		files: ['**/*.svelte'],
+		languageOptions: {
+			parser: svelteParser,
+			parserOptions: {
+				parser: tseslint.parser,
+				extraFileExtensions: ['.svelte']
+			}
+		}
+	},
+	{
+		files: ['**/*.svelte.ts'],
+		languageOptions: {
+			parser: tseslint.parser
+		}
+	},
   {
     languageOptions: {
       ecmaVersion: 2021,

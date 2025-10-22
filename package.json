@@ -22,6 +22,7 @@
     "hooks:uninstall": "lefthook uninstall"
   },
   "dependencies": {
+    "@tanstack/svelte-virtual": "^3.13.12",
     "@tauri-apps/api": "^2.9.0",
     "@tauri-apps/plugin-dialog": "^2.4.0",
     "@tauri-apps/plugin-fs": "^2.4.2",

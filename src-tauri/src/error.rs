@@ -4,6 +4,7 @@
 //! All errors implement `std::error::Error` and can be converted to user-friendly
 //! messages for display in the UI.
 
+use serde::Serialize;
 use std::io;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -12,7 +13,7 @@ use thiserror::Error;
 ///
 /// This enum covers all possible errors that can occur during process management,
 /// system monitoring, and configuration handling.
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Serialize)]
 pub enum SentinelError {
     /// Process with the specified name was not found.
     #[error("Process '{name}' not found")]
@@ -23,6 +24,7 @@ pub enum SentinelError {
     SpawnFailed {
         name: String,
         #[source]
+        #[serde(skip)]
         source: io::Error,
     },
 
@@ -47,6 +49,7 @@ pub enum SentinelError {
     ConfigParseFailed {
         path: PathBuf,
         #[source]
+        #[serde(skip)]
         source: serde_yaml::Error,
     },
 
@@ -55,6 +58,7 @@ pub enum SentinelError {
     FileIoError {
         path: PathBuf,
         #[source]
+        #[serde(skip)]
         source: io::Error,
     },
 
@@ -76,11 +80,30 @@ pub enum SentinelError {
 
     /// Generic I/O error.
     #[error("I/O error: {0}")]
-    Io(#[from] io::Error),
+    Io(
+        #[from]
+        #[serde(skip)]
+        io::Error,
+    ),
+
+    /// Port discovery error.
+    #[error("Port scanning failed: {0}")]
+    PortDiscoveryError(String),
+
+    /// Port not found.
+    #[error("Port {0} not found")]
+    PortNotFound(u16),
 
     /// Generic error with custom message.
     #[error("{0}")]
     Other(String),
+}
+
+/// Convert anyhow::Error to SentinelError
+impl From<anyhow::Error> for SentinelError {
+    fn from(err: anyhow::Error) -> Self {
+        SentinelError::Other(err.to_string())
+    }
 }
 
 /// Specialized Result type for Sentinel operations.
