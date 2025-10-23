@@ -58,6 +58,11 @@ pub struct ServiceDetector {
     cache: HashMap<String, ServiceInfo>,
 }
 
+impl Default for ServiceDetector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl ServiceDetector {
     pub fn new() -> Self {
         Self {

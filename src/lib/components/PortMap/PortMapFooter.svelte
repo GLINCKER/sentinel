@@ -227,7 +227,7 @@
             if (currentPage <= 3) return i + 1;
             if (currentPage >= totalPages - 2) return totalPages - 4 + i;
             return currentPage - 2 + i;
-          }) as page}
+          }) as page (page)}
             <button
               class="page-btn"
               class:active={page === currentPage}

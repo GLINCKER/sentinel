@@ -35,7 +35,8 @@
     "simple-icons": "^15.17.0",
     "svelte": "^5.41.1",
     "svelte-virtual-list-ce": "3.1.0-beta.2",
-    "tauri-pty": "^0.1.1"
+    "tauri-pty": "^0.1.1",
+    "uplot": "^1.6.32"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.6.1",

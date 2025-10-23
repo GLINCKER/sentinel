@@ -9,6 +9,7 @@
 	import Sidebar from './components/Sidebar.svelte';
 	import KeyboardShortcuts from './components/KeyboardShortcuts.svelte';
 	import ShellView from './lib/components/Shell/ShellView.svelte';
+	import NetworkMonitor from './routes/network/+page.svelte';
 
   let mounted = $state(false);
 
@@ -76,6 +77,8 @@
 				<ProcessDetail />
 			{:else if $currentView === 'port-map'}
 				<PortMapView />
+			{:else if $currentView === 'network'}
+				<NetworkMonitor />
 			{:else if $currentView === 'shell'}
 				<ShellView />
 			{:else if $currentView === 'settings'}

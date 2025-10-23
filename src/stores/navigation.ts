@@ -1,6 +1,12 @@
 import { writable } from 'svelte/store';
 
-export type View = 'dashboard' | 'process-detail' | 'port-map' | 'shell' | 'settings';
+export type View =
+	| 'dashboard'
+	| 'process-detail'
+	| 'port-map'
+	| 'network'
+	| 'shell'
+	| 'settings';
 
 export const currentView = writable<View>('dashboard');
 export const selectedProcess = writable<string | null>(null);

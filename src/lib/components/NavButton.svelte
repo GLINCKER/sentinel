@@ -58,6 +58,7 @@
   .glinr-nav-button {
     display: flex;
     align-items: center;
+    justify-content: flex-start;
     gap: var(--space-sm);
     padding: var(--space-sm) var(--space-md);
     border-radius: var(--radius-md);
@@ -68,6 +69,7 @@
     cursor: pointer;
     transition: all var(--transition-fast);
     position: relative;
+    width: 100%;
   }
 
   .glinr-nav-button :global(.icon) {
@@ -124,11 +126,15 @@
   }
 
   .badge {
-    padding: 2px 8px;
-    border-radius: var(--radius-sm);
-    font-size: var(--font-size-xs);
+    position: absolute;
+    right: var(--space-sm);
+    padding: 2px 6px;
+    min-width: 20px;
+    border-radius: 10px;
+    font-size: 11px;
     font-weight: 600;
     line-height: 1.2;
+    text-align: center;
     background: var(--error);
     color: white;
   }

@@ -286,8 +286,8 @@
   }
 
   .dropdown-item.selected {
-    background: var(--accent-primary);
-    color: white;
+    background: var(--text-primary);
+    color: var(--bg-primary);
   }
 
   .dropdown-item svg {

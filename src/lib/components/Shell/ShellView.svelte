@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { spawn, type Child } from 'tauri-pty';
   import ShellTabs from './ShellTabs.svelte';
   import GlinrTerminal from './GlinrTerminal.svelte';

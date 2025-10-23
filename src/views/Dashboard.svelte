@@ -28,7 +28,8 @@
   import GlinrSystemMetrics from '../components/GlinrSystemMetrics.svelte';
   import PollingControl from '../components/PollingControl.svelte';
   import ProcessSearch from '../components/ProcessSearch.svelte';
-  import { Play, Square, Package } from 'lucide-svelte';
+  import PageHeader from '$lib/components/PageHeader.svelte';
+  import { Play, Square, Package, LayoutDashboard } from 'lucide-svelte';
 
   let stopPolling: (() => void) | null = null;
   let isPerformingAction = $state(false);
@@ -135,37 +136,31 @@
 </script>
 
 <div class="glinr-dashboard">
-  <!-- Header with Integrated Title Bar -->
-  <header class="glinr-dashboard-header" data-tauri-drag-region>
-    <div class="glinr-header-content" data-tauri-drag-region>
-      <h1 class="glinr-dashboard-title" data-tauri-drag-region>Dashboard</h1>
-      <p class="glinr-dashboard-subtitle" data-tauri-drag-region>
-        Monitor and manage your development processes
-      </p>
-    </div>
+  <PageHeader
+    title="Dashboard"
+    subtitle="Monitor and manage your development processes"
+    icon={LayoutDashboard}
+  >
+    <button
+      class="glinr-action-btn glinr-action-btn-start"
+      disabled={isPerformingAction}
+      onclick={handleStartAll}
+      title="Start all stopped processes"
+    >
+      <Play size={14} />
+      <span>Start All</span>
+    </button>
 
-    <div class="glinr-header-actions">
-      <button
-        class="glinr-action-btn glinr-action-btn-start"
-        disabled={isPerformingAction}
-        onclick={handleStartAll}
-        title="Start all stopped processes"
-      >
-        <Play size={14} />
-        <span>Start All</span>
-      </button>
-
-      <button
-        class="glinr-action-btn glinr-action-btn-stop"
-        disabled={isPerformingAction}
-        onclick={handleStopAll}
-        title="Stop all running processes"
-      >
-        <Square size={14} />
-        <span>Stop All</span>
-      </button>
-    </div>
-  </header>
+    <button
+      class="glinr-action-btn glinr-action-btn-stop"
+      disabled={isPerformingAction}
+      onclick={handleStopAll}
+      title="Stop all running processes"
+    >
+      <Square size={14} />
+      <span>Stop All</span>
+    </button>
+  </PageHeader>
 
   <!-- Main Content -->
   <div class="glinr-dashboard-content">
@@ -231,49 +226,7 @@
     background: var(--bg-primary);
   }
 
-  /* Header - Integrated with Title Bar */
-  .glinr-dashboard-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--space-lg) var(--space-xl);
-    padding-left: var(--space-xl); /* Align with content */
-    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-    background: transparent;
-    flex-shrink: 0;
-    min-height: 64px;
-  }
-
-  .glinr-header-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .glinr-dashboard-title {
-    font-size: var(--font-size-lg);
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 0;
-    line-height: 1.2;
-    letter-spacing: -0.01em;
-  }
-
-  .glinr-dashboard-subtitle {
-    font-size: var(--font-size-xs);
-    color: var(--text-tertiary);
-    margin: 0;
-    font-weight: 500;
-  }
-
-  .glinr-header-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  /* Compact Action Buttons */
+  /* Action Buttons */
   .glinr-action-btn {
     display: flex;
     align-items: center;
@@ -424,21 +377,6 @@
 
   /* Responsive */
   @media (max-width: 768px) {
-    .glinr-dashboard-header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: var(--space-lg);
-    }
-
-    .glinr-header-actions {
-      width: 100%;
-      justify-content: stretch;
-    }
-
-    .glinr-header-actions > :global(button) {
-      flex: 1;
-    }
-
     .glinr-process-grid {
       grid-template-columns: 1fr;
     }

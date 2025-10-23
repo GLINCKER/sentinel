@@ -93,6 +93,11 @@
   --radius-xl: 1rem; /* 16px */
   --radius-full: 9999px;
 
+  /* Typography - Fonts */
+  --font-mono:
+    'SF Mono', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New',
+    monospace;
+
   /* Layout */
   --sidebar-width: 200px;
   --header-height: 60px;

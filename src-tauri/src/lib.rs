@@ -100,6 +100,11 @@ pub fn run() {
                 features::service_detection::ServiceDetector::new(),
             )),
         ))
+        .manage(features::network_monitor::NetworkMonitorState(
+            std::sync::Arc::new(std::sync::Mutex::new(
+                features::network_monitor::TrafficCollector::new(),
+            )),
+        ))
         .invoke_handler(tauri::generate_handler![
             // Process commands
             commands::start_process,
@@ -127,6 +132,11 @@ pub fn run() {
             features::service_detection::detect_service,
             features::service_detection::clear_service_cache,
             features::service_detection::get_service_cache_size,
+            // Network monitoring commands
+            features::network_monitor::get_network_stats,
+            features::network_monitor::get_network_history,
+            features::network_monitor::clear_network_history,
+            features::network_monitor::get_network_interfaces,
         ])
         .setup(|app| {
             // Initialize tracing

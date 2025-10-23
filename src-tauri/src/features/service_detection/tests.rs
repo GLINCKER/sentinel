@@ -249,7 +249,7 @@ fn test_multiple_services_different_ports() {
     assert!(nginx.is_some());
 
     // All should have different IDs
-    let ids = vec![postgres.unwrap().id, redis.unwrap().id, nginx.unwrap().id];
+    let ids = [postgres.unwrap().id, redis.unwrap().id, nginx.unwrap().id];
 
     let unique_ids: std::collections::HashSet<_> = ids.iter().collect();
     assert_eq!(unique_ids.len(), 3, "All services should have unique IDs");

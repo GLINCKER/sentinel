@@ -78,35 +78,66 @@ Sentinel aims to become the **go-to development guardian** for developers worldw
 
 ---
 
-### 🎯 Phase 3: Docker & Containers (Q2 2026)
+### 🚧 Phase 3: Advanced Monitoring & Network (Q4 2025 - Q1 2026)
 
+**Status:** In Progress (60% Complete)
 **Target Version:** 0.3.0
 
-#### Docker Integration
+#### ✅ Port Discovery & Management (Phase 3A - Complete)
+- ✅ Port scanning (TCP/UDP)
+- ✅ Process-to-port mapping
+- ✅ Kill process by port
+- ✅ Port categorization (Development, Database, System)
+- ✅ Search and filtering
+- ✅ Virtual scrolling for performance
+
+#### ✅ Shell Integration (Phase 3B - Complete)
+- ✅ Terminal/Shell management
+- ✅ Multiple shell instances
+- ✅ Shell process lifecycle
+
+#### ✅ Service Detection (Phase 3C - Complete)
+- ✅ HTTP service detection
+- ✅ Database service detection (PostgreSQL, MySQL, MongoDB, Redis)
+- ✅ Framework detection (Next.js, React, Flask, etc.)
+- ✅ Service confidence scoring
+- ✅ Service cache system
+
+#### ✅ Network Monitoring (Phase 3D - Complete)
+- ✅ Real-time bandwidth monitoring (uPlot charts)
+- ✅ Upload/Download rate tracking
+- ✅ Packet statistics
+- ✅ Network history (5-minute rolling buffer)
+- ✅ Per-interface statistics backend
+- ✅ Per-interface breakdown table UI
+- ✅ Interface status indicators (Active/Inactive)
+- ✅ Sortable interface list
+- ✅ Interface details modal
+- ✅ Dark mode optimized UI
+- ✅ Time range selection (1m, 5m, 15m, 30m)
+- ✅ Window dragging with custom title bar
+- ✅ Consistent UI design across all pages
+
+#### 🚧 Pending Features (Phase 3E)
+- [ ] Active connection tracking
+- [ ] Top bandwidth consumers
+- [ ] Network alerts/notifications
+- [ ] Export network statistics
+
+#### Docker Integration (Phase 3E - Planned)
 - [ ] Docker container monitoring
 - [ ] Container start/stop controls
 - [ ] Image management (pull, build, prune)
 - [ ] Docker Compose support
 - [ ] Container resource limits
-- [ ] Network inspection
-
-#### Advanced Monitoring
-- [ ] Network traffic monitoring
-- [ ] Port usage tracking
 - [ ] Container logs aggregation
-- [ ] Volume usage statistics
-- [ ] Multi-container orchestration
-
-#### CLI Enhancements
-- [ ] `sentinel docker` subcommands
-- [ ] Container status in `sentinel status`
-- [ ] Docker Compose file import
-- [ ] Container health checks
 
 **Success Metrics:**
-- Support 50+ containers simultaneously
-- Docker Compose parity
-- 5,000+ GitHub stars
+- ✅ Port discovery < 100ms
+- ✅ Real-time bandwidth visualization
+- ✅ Service detection accuracy > 85%
+- [ ] Support 50+ containers simultaneously
+- [ ] 5,000+ GitHub stars
 
 ---
 

@@ -7,12 +7,12 @@
   import '@xterm/xterm/css/xterm.css';
 
   interface Props {
-    shellId: string;
+    shellId?: string;
     onInit?: (terminal: Terminal) => void;
     theme?: 'dark' | 'light';
   }
 
-  let { shellId, onInit, theme = 'dark' }: Props = $props();
+  let { onInit, theme = 'dark' }: Props = $props();
 
   let terminalRef: HTMLDivElement;
   let terminal: Terminal | null = null;

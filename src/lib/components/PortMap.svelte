@@ -5,9 +5,7 @@
   import type { ServiceInfo } from '../types/service';
   import { detectService } from '../api/service-detection';
   import {
-    Search,
     RefreshCw,
-    Filter,
     ArrowUpDown,
     Trash2,
     ServerOff,
@@ -26,6 +24,8 @@
   import PortMapFooter from './PortMap/PortMapFooter.svelte';
   import FilterSection from './PortMap/FilterSection.svelte';
   import ServiceBadge from './PortMap/ServiceBadge.svelte';
+  import PageHeader from './PageHeader.svelte';
+  import { Network } from 'lucide-svelte';
 
   let refreshInterval: number | null = null;
   let expandedGroups = $state<Set<string>>(new Set());
@@ -101,13 +101,8 @@
   let activeQuickFilter = $state<QuickFilter>('all');
 
   async function detectServicesForPorts(ports: PortInfo[]) {
-    console.log(
-      '[ServiceDetection] Starting detection for',
-      ports.length,
-      'ports'
-    );
-
     // Detect services for all unique ports
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity
     const uniquePorts = new Map<number, PortInfo>();
     for (const port of ports) {
       if (!uniquePorts.has(port.port)) {
@@ -115,22 +110,9 @@
       }
     }
 
-    console.log(
-      '[ServiceDetection] Detecting for',
-      uniquePorts.size,
-      'unique ports'
-    );
-
     // Run detection in parallel
     const detectionPromises = Array.from(uniquePorts.values()).map(
       async (portInfo) => {
-        console.log(
-          '[ServiceDetection] Checking port',
-          portInfo.port,
-          'process:',
-          portInfo.processName
-        );
-
         const service = await detectService(
           portInfo.port,
           portInfo.pid,
@@ -138,31 +120,18 @@
           undefined // TODO: Get command from process info
         );
 
-        console.log(
-          '[ServiceDetection] Port',
-          portInfo.port,
-          'result:',
-          service
-        );
-
-        if (service) {
-          detectedServices.set(portInfo.port, service);
-        }
+        return service ? { port: portInfo.port, service } : null;
       }
     );
 
-    await Promise.all(detectionPromises);
+    const results = await Promise.all(detectionPromises);
 
-    console.log(
-      '[ServiceDetection] Total services detected:',
-      detectedServices.size
-    );
-    console.log(
-      '[ServiceDetection] Detected services:',
-      Array.from(detectedServices.entries())
-    );
-
-    detectedServices = detectedServices; // Trigger reactivity
+    // Update detectedServices with results
+    for (const result of results) {
+      if (result) {
+        detectedServices.set(result.port, result.service);
+      }
+    }
   }
 
   async function handleRefresh() {
@@ -253,15 +222,16 @@
 
   // Group ports by port number and PID
   let groupedPorts = $derived.by(() => {
-    const groups: Map<string, PortGroup> = new Map();
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity
+    const groupsMap = new Map<string, PortGroup>();
 
     for (const port of portStore.filteredPorts) {
       const key = `${port.port}-${port.pid}`;
 
-      if (groups.has(key)) {
-        groups.get(key)!.connections.push(port);
+      if (groupsMap.has(key)) {
+        groupsMap.get(key)!.connections.push(port);
       } else {
-        groups.set(key, {
+        groupsMap.set(key, {
           port: port.port,
           pid: port.pid,
           processName: port.processName,
@@ -273,7 +243,7 @@
       }
     }
 
-    return Array.from(groups.values());
+    return Array.from(groupsMap.values());
   });
 
   // Paginated ports
@@ -315,11 +285,12 @@
 
   // Reset scroll when page changes
   $effect(() => {
-    currentPage;
-    visibleStartIndex = 0;
-    visibleEndIndex = 20;
-    if (scrollContainer) {
-      scrollContainer.scrollTop = 0;
+    if (currentPage) {
+      visibleStartIndex = 0;
+      visibleEndIndex = 20;
+      if (scrollContainer) {
+        scrollContainer.scrollTop = 0;
+      }
     }
   });
 
@@ -339,13 +310,14 @@
   );
 
   function toggleGroup(key: string) {
-    const newSet: Set<string> = new Set(expandedGroups);
-    if (newSet.has(key)) {
-      newSet.delete(key);
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity
+    const updated = new Set(expandedGroups);
+    if (updated.has(key)) {
+      updated.delete(key);
     } else {
-      newSet.add(key);
+      updated.add(key);
     }
-    expandedGroups = newSet;
+    expandedGroups = updated;
   }
 
   function getGroupKey(group: PortGroup): string {
@@ -388,75 +360,48 @@
     itemsPerPage = size;
     currentPage = 1; // Reset to first page when changing page size
   }
-
-  // Group by state
-  let groupBy = $state<'none' | 'status' | 'type'>('none');
-
-  function handleGroupChange(value: 'none' | 'status' | 'type') {
-    groupBy = value;
-    // Note: grouping logic would need to be implemented in groupedPorts
-  }
-
-  function handleSortChange(value: 'port' | 'name' | 'status' | 'type') {
-    switch (value) {
-      case 'port':
-        handleSort('port');
-        break;
-      case 'name':
-        handleSort('process');
-        break;
-      case 'status':
-        handleSort('state');
-        break;
-      case 'type':
-        handleSort('protocol');
-        break;
-    }
-  }
 </script>
 
 <div class="port-map" role="region" aria-label="Network port discovery">
-  <!-- Header -->
-  <div class="header">
-    <div class="header-left">
-      <h2 class="header-title">Port Map</h2>
-      <div class="header-stats">
-        <span class="stat-badge stat-total">
-          {portStore.stats.total} ports
-          <button
-            class="info-icon-btn"
-            onclick={openPortCountInfoModal}
-            aria-label="Port count information"
-          >
-            <Info size={14} />
-          </button>
-        </span>
-        <span class="stat-badge stat-tcp">
-          {portStore.stats.tcp} TCP
-          <InfoBadge onClick={() => openBadgeInfoModal('tcp')} />
-        </span>
-        <span class="stat-badge stat-udp">
-          {portStore.stats.udp} UDP
-          <InfoBadge onClick={() => openBadgeInfoModal('udp')} />
-        </span>
-      </div>
+  <PageHeader
+    title="Port Map"
+    subtitle="Monitor network ports and service discovery"
+    icon={Network}
+  >
+    <div class="header-stats">
+      <span class="stat-badge stat-total">
+        {portStore.stats.total} ports
+        <button
+          class="info-icon-btn"
+          onclick={openPortCountInfoModal}
+          aria-label="Port count information"
+        >
+          <Info size={14} />
+        </button>
+      </span>
+      <span class="stat-badge stat-tcp">
+        {portStore.stats.tcp} TCP
+        <InfoBadge onClick={() => openBadgeInfoModal('tcp')} />
+      </span>
+      <span class="stat-badge stat-udp">
+        {portStore.stats.udp} UDP
+        <InfoBadge onClick={() => openBadgeInfoModal('udp')} />
+      </span>
     </div>
 
-    <div class="header-right">
-      <button
-        class="btn-refresh"
-        onclick={handleRefresh}
-        disabled={portStore.loading || isRefreshing}
-        aria-label="Refresh port list"
-      >
-        <RefreshCw
-          size={16}
-          class={portStore.loading || isRefreshing ? 'animate-spin' : ''}
-        />
-        Refresh
-      </button>
-    </div>
-  </div>
+    <button
+      class="btn-refresh"
+      onclick={handleRefresh}
+      disabled={portStore.loading || isRefreshing}
+      aria-label="Refresh port list"
+    >
+      <RefreshCw
+        size={16}
+        class={portStore.loading || isRefreshing ? 'animate-spin' : ''}
+      />
+      Refresh
+    </button>
+  </PageHeader>
 
   <!-- Quick Filter Tabs -->
   <div class="quick-filters" role="tablist" aria-label="Port category filters">
@@ -1018,28 +963,6 @@
   }
 
   /* Header */
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid var(--border);
-    background: var(--background);
-  }
-
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-  }
-
-  .header-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--foreground);
-    margin: 0;
-  }
-
   .header-stats {
     display: flex;
     gap: 0.75rem;
@@ -1090,35 +1013,47 @@
     color: rgb(168, 85, 247);
   }
 
-  .header-right {
-    display: flex;
-    gap: 0.5rem;
-  }
-
   .btn-refresh {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: var(--background);
-    color: var(--foreground);
-    border: 1px solid var(--border);
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-xs);
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all var(--transition-fast);
+  }
+
+  .btn-refresh :global(.lucide-refresh-cw) {
+    transition: transform 0.6s ease-in-out;
+  }
+
+  .btn-refresh :global(.animate-spin) {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .btn-refresh:hover:not(:disabled) {
-    background: var(--accent);
-    border-color: var(--primary);
+    background: var(--bg-hover);
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
 
   .btn-refresh:active:not(:disabled) {
-    transform: scale(0.98);
+    transform: translateY(0);
   }
 
   .btn-refresh:disabled {
@@ -1298,10 +1233,9 @@
   /* Table Header */
   .table-header {
     display: grid;
-    grid-template-columns: 40px 100px 80px minmax(
-        150px,
-        1.5fr
-      ) 80px 140px minmax(180px, 1.2fr) minmax(140px, 1fr) 70px;
+    grid-template-columns:
+      40px 100px 80px minmax(150px, 1.5fr)
+      80px 140px minmax(180px, 1.2fr) minmax(140px, 1fr) 70px;
     gap: 0.75rem;
     background: var(--muted);
     border-bottom: 1px solid var(--border);
@@ -1373,10 +1307,9 @@
   /* Port Rows */
   .port-row {
     display: grid;
-    grid-template-columns: 40px 100px 80px minmax(
-        150px,
-        1.5fr
-      ) 80px 140px minmax(180px, 1.2fr) minmax(140px, 1fr) 70px;
+    grid-template-columns:
+      40px 100px 80px minmax(150px, 1.5fr)
+      80px 140px minmax(180px, 1.2fr) minmax(140px, 1fr) 70px;
     gap: 0.75rem;
     align-items: center;
     border-bottom: 1px solid var(--border);

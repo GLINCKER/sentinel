@@ -14,6 +14,7 @@
   import { currentView, navigateTo, type View } from '../stores/navigation';
   import { runningCount, crashedProcesses } from '../stores/processes';
   import { theme } from '../stores/settings';
+  import { portStore } from '$lib/stores/port.svelte';
   import {
     LayoutDashboard,
     Settings,
@@ -22,8 +23,9 @@
     Sun,
     Moon,
     Monitor,
-    Network,
-    Terminal
+    Network as NetworkIcon,
+    Terminal,
+    Activity
   } from 'lucide-svelte';
   import { IconButton, NavButton, StatusBadge } from '../lib/components';
   import type { ComponentType } from 'svelte';
@@ -47,7 +49,13 @@
     {
       id: 'port-map',
       label: 'Port Map',
-      icon: Network
+      icon: NetworkIcon,
+      badge: portStore.stats.total > 0 ? portStore.stats.total : undefined
+    },
+    {
+      id: 'network',
+      label: 'Network',
+      icon: Activity
     },
     {
       id: 'shell',
@@ -112,7 +120,7 @@
   </div>
 
   <!-- Status Badge -->
-  {#if !isCollapsed}
+  {#if !isCollapsed && $runningCount > 0}
     <StatusBadge count={$runningCount} />
   {/if}
 
