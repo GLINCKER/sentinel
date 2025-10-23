@@ -105,6 +105,14 @@ pub fn run() {
                 features::network_monitor::TrafficCollector::new(),
             )),
         ))
+        .manage(features::connections::ConnectionTrackerState(
+            std::sync::Arc::new(std::sync::Mutex::new(
+                features::connections::ConnectionTracker::new(),
+            )),
+        ))
+        .manage(features::docker::DockerMonitorState(std::sync::Arc::new(
+            tokio::sync::Mutex::new(features::docker::DockerMonitor::new()),
+        )))
         .invoke_handler(tauri::generate_handler![
             // Process commands
             commands::start_process,
@@ -137,6 +145,20 @@ pub fn run() {
             features::network_monitor::get_network_history,
             features::network_monitor::clear_network_history,
             features::network_monitor::get_network_interfaces,
+            // Connection tracking commands
+            features::connections::get_active_connections,
+            features::connections::get_connection_summary,
+            features::connections::get_bandwidth_consumers,
+            // Docker commands
+            features::docker::get_docker_info,
+            features::docker::list_docker_containers,
+            features::docker::list_docker_images,
+            features::docker::get_docker_container_stats,
+            features::docker::start_docker_container,
+            features::docker::stop_docker_container,
+            features::docker::restart_docker_container,
+            features::docker::pause_docker_container,
+            features::docker::unpause_docker_container,
         ])
         .setup(|app| {
             // Initialize tracing

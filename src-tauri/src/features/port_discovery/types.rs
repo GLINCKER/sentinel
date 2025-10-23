@@ -18,6 +18,8 @@ pub struct PortInfo {
     pub local_address: String,
     /// Remote address (for ESTABLISHED connections)
     pub remote_address: Option<String>,
+    /// Process command line (for service detection)
+    pub command: Option<String>,
     /// Network traffic statistics
     pub traffic: NetworkTraffic,
 }

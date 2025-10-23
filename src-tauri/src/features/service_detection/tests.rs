@@ -7,8 +7,8 @@ use super::patterns::get_builtin_patterns;
 fn test_detector_creation() {
     let detector = ServiceDetector::new();
     assert!(
-        detector.patterns.len() >= 20,
-        "Should have at least 20 built-in patterns"
+        detector.patterns.len() >= 22,
+        "Should have at least 22 built-in patterns"
     );
 }
 
@@ -16,8 +16,8 @@ fn test_detector_creation() {
 fn test_builtin_patterns_count() {
     let patterns = get_builtin_patterns();
     assert!(
-        patterns.len() >= 20,
-        "Expected at least 20 built-in patterns, got {}",
+        patterns.len() >= 22,
+        "Expected at least 22 built-in patterns, got {}",
         patterns.len()
     );
 }
@@ -296,4 +296,35 @@ fn test_flask_detection() {
     let service = result.unwrap();
     assert_eq!(service.name, "Flask");
     assert_eq!(service.icon, "flask");
+}
+
+#[test]
+fn test_fastapi_detection() {
+    let mut detector = ServiceDetector::new();
+
+    let result = detector.detect(8000, 12345, "python", Some("uvicorn main:app"));
+
+    assert!(result.is_some());
+    let service = result.unwrap();
+    assert_eq!(service.name, "FastAPI");
+    assert_eq!(service.category, ServiceCategory::WebFramework);
+    assert_eq!(service.icon, "fastapi");
+}
+
+#[test]
+fn test_springboot_detection() {
+    let mut detector = ServiceDetector::new();
+
+    let result = detector.detect(
+        8080,
+        12345,
+        "java",
+        Some("java -jar org.springframework.boot.loader.JarLauncher"),
+    );
+
+    assert!(result.is_some());
+    let service = result.unwrap();
+    assert_eq!(service.name, "Spring Boot");
+    assert_eq!(service.category, ServiceCategory::WebFramework);
+    assert_eq!(service.icon, "springboot");
 }

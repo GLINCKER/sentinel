@@ -94,6 +94,10 @@ pub enum SentinelError {
     #[error("Port {0} not found")]
     PortNotFound(u16),
 
+    /// Docker error.
+    #[error("Docker error: {0}")]
+    DockerError(String),
+
     /// Generic error with custom message.
     #[error("{0}")]
     Other(String),
@@ -103,6 +107,13 @@ pub enum SentinelError {
 impl From<anyhow::Error> for SentinelError {
     fn from(err: anyhow::Error) -> Self {
         SentinelError::Other(err.to_string())
+    }
+}
+
+/// Convert bollard::errors::Error to SentinelError
+impl From<bollard::errors::Error> for SentinelError {
+    fn from(err: bollard::errors::Error) -> Self {
+        SentinelError::DockerError(err.to_string())
     }
 }
 

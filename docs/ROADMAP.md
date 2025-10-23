@@ -78,9 +78,9 @@ Sentinel aims to become the **go-to development guardian** for developers worldw
 
 ---
 
-### 🚧 Phase 3: Advanced Monitoring & Network (Q4 2025 - Q1 2026)
+### ✅ Phase 3: Advanced Monitoring & Network (Q4 2025 - Q1 2026)
 
-**Status:** In Progress (60% Complete)
+**Status:** Complete (100%)
 **Target Version:** 0.3.0
 
 #### ✅ Port Discovery & Management (Phase 3A - Complete)
@@ -118,19 +118,30 @@ Sentinel aims to become the **go-to development guardian** for developers worldw
 - ✅ Window dragging with custom title bar
 - ✅ Consistent UI design across all pages
 
-#### 🚧 Pending Features (Phase 3E)
-- [ ] Active connection tracking
-- [ ] Top bandwidth consumers
-- [ ] Network alerts/notifications
-- [ ] Export network statistics
+#### ✅ Active Connections Monitoring (Phase 3E - Complete)
+- ✅ Active TCP/UDP connection tracking
+- ✅ Connection summary statistics
+- ✅ Top bandwidth consumers identification
+- ✅ Process-to-connection mapping
+- ✅ Connections filtering (protocol, state, process)
+- ✅ Sortable connections table
+- ✅ Real-time connection monitoring
+- ✅ Compact, information-dense UI
+- [ ] Network alerts/notifications (deferred)
+- [ ] Export network statistics (deferred)
 
-#### Docker Integration (Phase 3E - Planned)
-- [ ] Docker container monitoring
-- [ ] Container start/stop controls
-- [ ] Image management (pull, build, prune)
-- [ ] Docker Compose support
-- [ ] Container resource limits
-- [ ] Container logs aggregation
+#### ✅ Docker Integration (Phase 3F - Complete)
+- ✅ Docker container monitoring
+- ✅ Docker image listing
+- ✅ Container start/stop/restart/pause/unpause controls
+- ✅ Real-time container statistics (CPU, memory, network, I/O)
+- ✅ Container status indicators
+- ✅ Grid and list view modes
+- ✅ macOS Docker Desktop compatibility
+- ✅ Compact, modern UI with tabs
+- [ ] Image management operations (pull, build, prune) (future)
+- [ ] Docker Compose support (future)
+- [ ] Container logs aggregation (future)
 
 **Success Metrics:**
 - ✅ Port discovery < 100ms

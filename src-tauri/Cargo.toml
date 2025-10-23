@@ -35,6 +35,10 @@ sysinfo = "0.37"
 # Process management
 subprocess = "0.2"
 
+# Docker integration
+bollard = "0.17"
+futures-util = "0.3"
+
 # Error handling
 anyhow = "1.0"
 thiserror = "1.0"

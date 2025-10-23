@@ -11,6 +11,7 @@ export interface PortInfo {
 	state: PortState;
 	localAddress: string;
 	remoteAddress: string | null;
+	command: string | null;
 	traffic: NetworkTraffic;
 }
 

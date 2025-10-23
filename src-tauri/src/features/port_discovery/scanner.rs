@@ -2,6 +2,7 @@
 
 use anyhow::{Context, Result};
 use std::time::Duration;
+use sysinfo::System;
 use tokio::process::Command;
 
 use super::parser::{parse_lsof_output, parse_netstat_output};
@@ -75,7 +76,12 @@ impl PortScanner {
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
-        parse_lsof_output(&stdout).context("Failed to parse lsof output")
+        let mut ports = parse_lsof_output(&stdout).context("Failed to parse lsof output")?;
+
+        // Enrich with process command lines
+        self.enrich_with_commands(&mut ports);
+
+        Ok(ports)
     }
 
     /// Scan using netstat (Windows)
@@ -96,7 +102,35 @@ impl PortScanner {
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
-        parse_netstat_output(&stdout).context("Failed to parse netstat output")
+        let mut ports = parse_netstat_output(&stdout).context("Failed to parse netstat output")?;
+
+        // Enrich with process command lines
+        self.enrich_with_commands(&mut ports);
+
+        Ok(ports)
+    }
+
+    /// Enrich port info with process command lines using sysinfo
+    fn enrich_with_commands(&self, ports: &mut [PortInfo]) {
+        let sys = System::new_all();
+
+        for port in ports.iter_mut() {
+            if let Some(process) = sys.process(sysinfo::Pid::from_u32(port.pid)) {
+                // Get command line as a single string
+                let cmd_vec = process.cmd();
+                if !cmd_vec.is_empty() {
+                    // Convert OsStr to String
+                    let cmd_string = cmd_vec
+                        .iter()
+                        .filter_map(|s| s.to_str())
+                        .collect::<Vec<&str>>()
+                        .join(" ");
+                    if !cmd_string.is_empty() {
+                        port.command = Some(cmd_string);
+                    }
+                }
+            }
+        }
     }
 
     /// Kill a process by PID
