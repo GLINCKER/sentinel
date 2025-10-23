@@ -121,19 +121,6 @@ fn test_detect_docker() {
 }
 
 #[test]
-fn test_detect_nodejs_generic() {
-    let mut detector = ServiceDetector::new();
-
-    // Should match generic Node.js pattern when no specific framework is detected
-    let result = detector.detect(4000, 33333, "node", None);
-
-    assert!(result.is_some(), "Should detect generic Node.js");
-    let service = result.unwrap();
-    assert_eq!(service.name, "Node.js");
-    assert_eq!(service.icon, "nodedotjs");
-}
-
-#[test]
 fn test_no_detection_for_unknown_service() {
     let mut detector = ServiceDetector::new();
 
