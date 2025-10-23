@@ -1,25 +1,32 @@
 <script lang="ts">
   import { ChevronLeft, ChevronRight } from 'lucide-svelte';
+  import Dropdown from '../Dropdown.svelte';
 
   interface Props {
     currentPage: number;
+    totalPages: number;
     totalItems: number;
     itemsPerPage: number;
     onPageChange: (page: number) => void;
-    onItemsPerPageChange: (items: number) => void;
+    onPageSizeChange: (size: number) => void;
   }
 
   let {
     currentPage,
+    totalPages,
     totalItems,
     itemsPerPage,
     onPageChange,
-    onPageChange: onItemsPerPageChange
+    onPageSizeChange
   }: Props = $props();
 
-  const pageSizeOptions = [25, 50, 100, 200];
+  const pageSizeOptions = [
+    { value: 10, label: '10 per page' },
+    { value: 20, label: '20 per page' },
+    { value: 50, label: '50 per page' },
+    { value: 100, label: '100 per page' }
+  ];
 
-  let totalPages = $derived(Math.ceil(totalItems / itemsPerPage));
   let startItem = $derived((currentPage - 1) * itemsPerPage + 1);
   let endItem = $derived(Math.min(currentPage * itemsPerPage, totalItems));
 
@@ -27,12 +34,6 @@
     if (page >= 1 && page <= totalPages) {
       onPageChange(page);
     }
-  }
-
-  function changePageSize(newSize: number) {
-    onItemsPerPageChange(newSize);
-    // Reset to page 1 when changing page size
-    onPageChange(1);
   }
 </script>
 
@@ -45,15 +46,11 @@
       of <span class="mono">{totalItems}</span>
     </span>
 
-    <select
-      class="page-size-select"
-      value={itemsPerPage}
-      onchange={(e) => changePageSize(Number(e.currentTarget.value))}
-    >
-      {#each pageSizeOptions as size (size)}
-        <option value={size}>{size} per page</option>
-      {/each}
-    </select>
+    <Dropdown
+      options={pageSizeOptions}
+      selected={itemsPerPage}
+      onSelect={onPageSizeChange}
+    />
   </div>
 
   <div class="pagination-controls">
@@ -155,27 +152,6 @@
       'SF Mono', 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
     font-weight: 600;
     color: var(--foreground);
-  }
-
-  .page-size-select {
-    padding: 0.375rem 0.625rem;
-    background: var(--muted);
-    border: 1px solid var(--border);
-    border-radius: 0.375rem;
-    font-size: 0.8125rem;
-    color: var(--foreground);
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .page-size-select:hover {
-    border-color: var(--foreground);
-  }
-
-  .page-size-select:focus {
-    outline: none;
-    border-color: var(--foreground);
-    box-shadow: 0 0 0 1px var(--foreground);
   }
 
   .pagination-controls {

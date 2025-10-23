@@ -22,7 +22,8 @@
     Sun,
     Moon,
     Monitor,
-    Network
+    Network,
+    Terminal
   } from 'lucide-svelte';
   import { IconButton, NavButton, StatusBadge } from '../lib/components';
   import type { ComponentType } from 'svelte';
@@ -47,6 +48,11 @@
       id: 'port-map',
       label: 'Port Map',
       icon: Network
+    },
+    {
+      id: 'shell',
+      label: 'Terminal',
+      icon: Terminal
     }
   ]);
 

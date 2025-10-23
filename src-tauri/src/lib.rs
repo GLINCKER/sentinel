@@ -93,7 +93,13 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_pty::init())
         .manage(AppState::new())
+        .manage(features::service_detection::ServiceDetectorState(
+            std::sync::Arc::new(std::sync::Mutex::new(
+                features::service_detection::ServiceDetector::new(),
+            )),
+        ))
         .invoke_handler(tauri::generate_handler![
             // Process commands
             commands::start_process,
@@ -117,6 +123,10 @@ pub fn run() {
             features::port_discovery::scan_ports,
             features::port_discovery::kill_process_by_port,
             features::port_discovery::get_port_info,
+            // Service detection commands
+            features::service_detection::detect_service,
+            features::service_detection::clear_service_cache,
+            features::service_detection::get_service_cache_size,
         ])
         .setup(|app| {
             // Initialize tracing

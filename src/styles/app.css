@@ -231,11 +231,29 @@ body {
   background: var(--text-tertiary);
 }
 
-/* Focus styles for accessibility */
+/* Focus styles for accessibility - WCAG 2.2 compliant */
 :focus-visible {
-  outline: 2px solid var(--accent-primary);
+  outline: 2px solid var(--ring, #3b82f6);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
+}
+
+/* Enhanced focus for interactive elements */
+button:focus-visible,
+a:focus-visible,
+[role='button']:focus-visible,
+[role='tab']:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--ring, #3b82f6);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+/* Focus for sortable table headers */
+[role='columnheader']:focus-visible {
+  outline: 2px solid var(--ring, #3b82f6);
+  outline-offset: -2px;
+  background: var(--accent);
 }
 
 /* Button reset */

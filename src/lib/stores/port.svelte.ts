@@ -12,6 +12,8 @@ class PortStore {
 	loading = $state(false);
 	error = $state<string | null>(null);
 	lastScan = $state<Date | null>(null);
+	lastScanDuration = $state<number>(0); // in milliseconds
+	averageScanDuration = $state<number>(0); // rolling average
 
 	// Filters and sorting
 	searchQuery = $state('');
@@ -118,6 +120,9 @@ class PortStore {
 		this.loading = true;
 		this.error = null;
 
+		// Start performance timer
+		const startTime = performance.now();
+
 		try {
 			console.log('[PortStore] Invoking scan_ports command');
 
@@ -128,7 +133,25 @@ class PortStore {
 			);
 
 			const result = await Promise.race([scanPromise, timeoutPromise]);
-			console.log('[PortStore] Received', result.length, 'ports');
+
+			// Calculate performance metrics
+			const endTime = performance.now();
+			const duration = endTime - startTime;
+			this.lastScanDuration = Math.round(duration);
+
+			// Update rolling average (last 10 scans)
+			this.averageScanDuration = Math.round(
+				this.averageScanDuration === 0
+					? duration
+					: (this.averageScanDuration * 9 + duration) / 10
+			);
+
+			console.log(`[PortStore] Scan completed in ${duration.toFixed(2)}ms - Received ${result.length} ports`);
+
+			// Performance warning
+			if (duration > 1000) {
+				console.warn(`[PortStore] Scan took ${duration.toFixed(2)}ms (> 1s threshold)`);
+			}
 
 			this.ports = result;
 			this.lastScan = new Date();

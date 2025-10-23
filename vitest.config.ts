@@ -6,12 +6,13 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    include: ['src/**/*.{test,spec}.{js,ts}'],
+    include: ['src/**/__tests__/**/*.{test,spec}.{js,ts}', 'src/**/*.{test,spec}.{js,ts}'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
       include: ['src/**/*.{js,ts,svelte}'],
       exclude: [
+        'src/**/__tests__/**',
         'src/**/*.{test,spec}.{js,ts}',
         'src-tauri/**',
         '**/*.d.ts',

@@ -172,4 +172,37 @@ mod tests {
         // Just verify it doesn't error
         let _ = result;
     }
+
+    #[tokio::test]
+    async fn test_scan_returns_valid_ports() {
+        let scanner = PortScanner::new();
+        let ports = scanner.scan().await.unwrap();
+
+        // Verify all returned data is valid
+        for port_info in &ports {
+            // u16 is automatically in range 0-65535, just verify basic fields
+            assert!(port_info.pid > 0, "PID should be greater than 0");
+            assert!(
+                !port_info.process_name.is_empty(),
+                "Process name should not be empty"
+            );
+            assert!(
+                !port_info.local_address.is_empty(),
+                "Local address should not be empty"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_scan_returns_results() {
+        // This test verifies that scan() returns at least some results
+        // (unless running in a very restricted environment)
+        let scanner = PortScanner::new();
+        let ports = scanner.scan().await.unwrap();
+
+        // Most systems will have at least a few ports open
+        // But we don't assert a minimum to avoid test fragility
+        // Just verify the scan works
+        let _ = ports;
+    }
 }

@@ -2,6 +2,8 @@
   import { onMount, onDestroy } from 'svelte';
   import { portStore } from '../stores/port.svelte';
   import type { SortBy, PortInfo } from '../types/port';
+  import type { ServiceInfo } from '../types/service';
+  import { detectService } from '../api/service-detection';
   import {
     Search,
     RefreshCw,
@@ -22,6 +24,8 @@
   import BadgeInfoModal from './PortMap/BadgeInfoModal.svelte';
   import InfoBadge from './PortMap/InfoBadge.svelte';
   import PortMapFooter from './PortMap/PortMapFooter.svelte';
+  import FilterSection from './PortMap/FilterSection.svelte';
+  import ServiceBadge from './PortMap/ServiceBadge.svelte';
 
   let refreshInterval: number | null = null;
   let expandedGroups = $state<Set<string>>(new Set());
@@ -49,6 +53,10 @@
       | null;
   }>({ show: false, badgeType: null });
 
+  // Pagination state
+  let currentPage = $state(1);
+  let itemsPerPage = $state(20);
+
   interface PortGroup {
     port: number;
     pid: number;
@@ -58,6 +66,9 @@
     category: string;
     connections: PortInfo[];
   }
+
+  // Service detection cache: port -> ServiceInfo
+  let detectedServices = $state<Map<number, ServiceInfo>>(new Map());
 
   type QuickFilter =
     | 'all'
@@ -70,6 +81,8 @@
   onMount(async () => {
     // Auto-scan on mount
     await portStore.scanPorts();
+    // Detect services for discovered ports
+    await detectServicesForPorts(portStore.ports);
   });
 
   onDestroy(() => {
@@ -78,11 +91,87 @@
     }
   });
 
+  // Re-detect services when ports change
+  $effect(() => {
+    if (portStore.ports.length > 0) {
+      detectServicesForPorts(portStore.ports);
+    }
+  });
+
   let activeQuickFilter = $state<QuickFilter>('all');
+
+  async function detectServicesForPorts(ports: PortInfo[]) {
+    console.log(
+      '[ServiceDetection] Starting detection for',
+      ports.length,
+      'ports'
+    );
+
+    // Detect services for all unique ports
+    const uniquePorts = new Map<number, PortInfo>();
+    for (const port of ports) {
+      if (!uniquePorts.has(port.port)) {
+        uniquePorts.set(port.port, port);
+      }
+    }
+
+    console.log(
+      '[ServiceDetection] Detecting for',
+      uniquePorts.size,
+      'unique ports'
+    );
+
+    // Run detection in parallel
+    const detectionPromises = Array.from(uniquePorts.values()).map(
+      async (portInfo) => {
+        console.log(
+          '[ServiceDetection] Checking port',
+          portInfo.port,
+          'process:',
+          portInfo.processName
+        );
+
+        const service = await detectService(
+          portInfo.port,
+          portInfo.pid,
+          portInfo.processName,
+          undefined // TODO: Get command from process info
+        );
+
+        console.log(
+          '[ServiceDetection] Port',
+          portInfo.port,
+          'result:',
+          service
+        );
+
+        if (service) {
+          detectedServices.set(portInfo.port, service);
+        }
+      }
+    );
+
+    await Promise.all(detectionPromises);
+
+    console.log(
+      '[ServiceDetection] Total services detected:',
+      detectedServices.size
+    );
+    console.log(
+      '[ServiceDetection] Detected services:',
+      Array.from(detectedServices.entries())
+    );
+
+    detectedServices = detectedServices; // Trigger reactivity
+  }
 
   async function handleRefresh() {
     isRefreshing = true;
     await portStore.scanPorts(true);
+
+    // Detect services after port scan
+    await detectServicesForPorts(portStore.ports);
+
     setTimeout(() => {
       isRefreshing = false;
     }, 600);
@@ -187,6 +276,68 @@
     return Array.from(groups.values());
   });
 
+  // Paginated ports
+  let paginatedPorts = $derived.by(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return groupedPorts.slice(startIndex, endIndex);
+  });
+
+  // Total pages
+  let totalPages = $derived(Math.ceil(groupedPorts.length / itemsPerPage));
+
+  // Virtual scrolling state
+  let scrollContainer: HTMLDivElement | null = null;
+  let visibleStartIndex = $state(0);
+  let visibleEndIndex = $state(20);
+  const ITEM_HEIGHT = 64; // Minimum height per row
+  const BUFFER_SIZE = 5; // Render extra items above/below viewport
+
+  // Calculate visible range based on scroll position
+  function handleScroll(e: Event) {
+    if (!scrollContainer) return;
+
+    const scrollTop = (e.target as HTMLDivElement).scrollTop;
+    const viewportHeight = scrollContainer.clientHeight;
+
+    const start = Math.max(
+      0,
+      Math.floor(scrollTop / ITEM_HEIGHT) - BUFFER_SIZE
+    );
+    const end = Math.min(
+      paginatedPorts.length,
+      Math.ceil((scrollTop + viewportHeight) / ITEM_HEIGHT) + BUFFER_SIZE
+    );
+
+    visibleStartIndex = start;
+    visibleEndIndex = end;
+  }
+
+  // Reset scroll when page changes
+  $effect(() => {
+    currentPage;
+    visibleStartIndex = 0;
+    visibleEndIndex = 20;
+    if (scrollContainer) {
+      scrollContainer.scrollTop = 0;
+    }
+  });
+
+  // Virtual scrolled ports (only render visible + buffer)
+  let virtualPorts = $derived.by(() => {
+    // Only use virtual scrolling if there are many items
+    if (paginatedPorts.length <= 50) {
+      return paginatedPorts;
+    }
+    return paginatedPorts.slice(visibleStartIndex, visibleEndIndex);
+  });
+
+  // Calculate spacer heights for virtual scrolling
+  let topSpacerHeight = $derived(visibleStartIndex * ITEM_HEIGHT);
+  let bottomSpacerHeight = $derived(
+    Math.max(0, (paginatedPorts.length - visibleEndIndex) * ITEM_HEIGHT)
+  );
+
   function toggleGroup(key: string) {
     const newSet: Set<string> = new Set(expandedGroups);
     if (newSet.has(key)) {
@@ -226,6 +377,41 @@
   function togglePause() {
     isPaused = !isPaused;
     // You can add logic here to actually pause/resume scanning if needed
+  }
+
+  // Pagination handlers
+  function handlePageChange(page: number) {
+    currentPage = page;
+  }
+
+  function handlePageSizeChange(size: number) {
+    itemsPerPage = size;
+    currentPage = 1; // Reset to first page when changing page size
+  }
+
+  // Group by state
+  let groupBy = $state<'none' | 'status' | 'type'>('none');
+
+  function handleGroupChange(value: 'none' | 'status' | 'type') {
+    groupBy = value;
+    // Note: grouping logic would need to be implemented in groupedPorts
+  }
+
+  function handleSortChange(value: 'port' | 'name' | 'status' | 'type') {
+    switch (value) {
+      case 'port':
+        handleSort('port');
+        break;
+      case 'name':
+        handleSort('process');
+        break;
+      case 'status':
+        handleSort('state');
+        break;
+      case 'type':
+        handleSort('protocol');
+        break;
+    }
   }
 </script>
 
@@ -273,93 +459,69 @@
   </div>
 
   <!-- Quick Filter Tabs -->
-  <div class="quick-filters">
+  <div class="quick-filters" role="tablist" aria-label="Port category filters">
     <button
       class="filter-tab {activeQuickFilter === 'all' ? 'active' : ''}"
+      role="tab"
+      aria-selected={activeQuickFilter === 'all'}
+      aria-controls="port-list"
       onclick={() => applyQuickFilter('all')}
     >
       All Ports
     </button>
     <button
       class="filter-tab {activeQuickFilter === 'development' ? 'active' : ''}"
+      role="tab"
+      aria-selected={activeQuickFilter === 'development'}
+      aria-controls="port-list"
       onclick={() => applyQuickFilter('development')}
     >
       Development
     </button>
     <button
       class="filter-tab {activeQuickFilter === 'database' ? 'active' : ''}"
+      role="tab"
+      aria-selected={activeQuickFilter === 'database'}
+      aria-controls="port-list"
       onclick={() => applyQuickFilter('database')}
     >
       Database
     </button>
     <button
       class="filter-tab {activeQuickFilter === 'system' ? 'active' : ''}"
+      role="tab"
+      aria-selected={activeQuickFilter === 'system'}
+      aria-controls="port-list"
       onclick={() => applyQuickFilter('system')}
     >
       System
     </button>
     <button
       class="filter-tab {activeQuickFilter === 'listen' ? 'active' : ''}"
+      role="tab"
+      aria-selected={activeQuickFilter === 'listen'}
+      aria-controls="port-list"
       onclick={() => applyQuickFilter('listen')}
     >
       Listening
     </button>
     <button
       class="filter-tab {activeQuickFilter === 'established' ? 'active' : ''}"
+      role="tab"
+      aria-selected={activeQuickFilter === 'established'}
+      aria-controls="port-list"
       onclick={() => applyQuickFilter('established')}
     >
       Active Connections
     </button>
   </div>
 
-  <!-- Toolbar with Search and Filters -->
-  <div class="toolbar">
-    <div class="search-box">
-      <Search size={16} class="search-icon" />
-      <input
-        type="text"
-        placeholder="Search ports, processes, or addresses..."
-        bind:value={portStore.searchQuery}
-        aria-label="Search ports"
-      />
-    </div>
-
-    <div class="filter-controls">
-      <div class="filter-group">
-        <select bind:value={portStore.protocolFilter} class="filter-select">
-          <option value="all">All Protocols</option>
-          <option value="TCP">TCP</option>
-          <option value="UDP">UDP</option>
-        </select>
-      </div>
-
-      <div class="filter-group">
-        <select bind:value={portStore.stateFilter} class="filter-select">
-          <option value="all">All States</option>
-          <option value="Listen">Listen</option>
-          <option value="Established">Established</option>
-          <option value="TimeWait">Time Wait</option>
-          <option value="CloseWait">Close Wait</option>
-        </select>
-      </div>
-
-      <div class="filter-group">
-        <select bind:value={portStore.categoryFilter} class="filter-select">
-          <option value="all">All Categories</option>
-          <option value="Development">Development</option>
-          <option value="Database">Database</option>
-          <option value="System">System</option>
-          <option value="Application">Application</option>
-        </select>
-      </div>
-
-      {#if portStore.searchQuery || portStore.protocolFilter !== 'all' || portStore.stateFilter !== 'all' || portStore.categoryFilter !== 'all'}
-        <button class="btn-clear" onclick={() => portStore.resetFilters()}>
-          <Filter size={14} />
-          Clear
-        </button>
-      {/if}
-    </div>
+  <!-- Collapsible Filter Section -->
+  <div class="filter-section-wrapper">
+    <FilterSection
+      searchQuery={portStore.searchQuery}
+      onSearchChange={(value) => (portStore.searchQuery = value)}
+    />
   </div>
 
   <!-- Error State -->
@@ -371,47 +533,101 @@
   {/if}
 
   <!-- Port Table -->
-  <div class="table-container">
-    <div class="table-header">
-      <div class="th-expand"></div>
+  <div class="table-container" role="region" aria-label="Port list table">
+    <div class="table-header" role="row">
+      <div class="th-expand" role="columnheader" aria-label="Expand"></div>
       <div
         class="th th-port sortable"
         role="columnheader"
+        aria-sort={portStore.sortBy === 'port'
+          ? portStore.sortOrder === 'asc'
+            ? 'ascending'
+            : 'descending'
+          : 'none'}
         onclick={() => handleSort('port')}
+        onkeydown={(e) =>
+          (e.key === 'Enter' || e.key === ' ') && handleSort('port')}
         tabindex="0"
+        aria-label="Port number, sortable"
       >
         <span>Port</span>
         {#if portStore.sortBy === 'port'}
           <ArrowUpDown
             size={12}
             class={portStore.sortOrder === 'desc' ? 'rotate-180' : ''}
+            aria-hidden="true"
           />
         {/if}
       </div>
-      <div class="th th-protocol" role="columnheader">Protocol</div>
+      <div
+        class="th th-protocol"
+        role="columnheader"
+        aria-label="Protocol type"
+      >
+        Protocol
+      </div>
       <div
         class="th th-process sortable"
         role="columnheader"
+        aria-sort={portStore.sortBy === 'process'
+          ? portStore.sortOrder === 'asc'
+            ? 'ascending'
+            : 'descending'
+          : 'none'}
         onclick={() => handleSort('process')}
+        onkeydown={(e) =>
+          (e.key === 'Enter' || e.key === ' ') && handleSort('process')}
         tabindex="0"
+        aria-label="Process name, sortable"
       >
         <span>Process</span>
         {#if portStore.sortBy === 'process'}
           <ArrowUpDown
             size={12}
             class={portStore.sortOrder === 'desc' ? 'rotate-180' : ''}
+            aria-hidden="true"
           />
         {/if}
       </div>
-      <div class="th th-pid" role="columnheader">PID</div>
-      <div class="th th-state" role="columnheader">State</div>
-      <div class="th th-address" role="columnheader">Address</div>
-      <div class="th th-info" role="columnheader">Info</div>
-      <div class="th th-actions" role="columnheader">Actions</div>
+      <div class="th th-pid" role="columnheader" aria-label="Process ID">
+        PID
+      </div>
+      <div
+        class="th th-state"
+        role="columnheader"
+        aria-label="Connection state"
+      >
+        State
+      </div>
+      <div
+        class="th th-address"
+        role="columnheader"
+        aria-label="Network address"
+      >
+        Address
+      </div>
+      <div
+        class="th th-info"
+        role="columnheader"
+        aria-label="Additional information"
+      >
+        Info
+      </div>
+      <div
+        class="th th-actions"
+        role="columnheader"
+        aria-label="Available actions"
+      >
+        Actions
+      </div>
     </div>
 
     <!-- Scrolling Container -->
-    <div class="scroll-container">
+    <div
+      class="scroll-container"
+      bind:this={scrollContainer}
+      onscroll={handleScroll}
+    >
       {#if portStore.loading && portStore.ports.length === 0}
         <!-- Skeleton Loading -->
         {#each Array(10) as _, idx (idx)}
@@ -436,8 +652,13 @@
         </div>
       {:else}
         <!-- Port Groups -->
-        <div class="port-list">
-          {#each groupedPorts as group (getGroupKey(group))}
+        <div class="port-list" id="port-list" role="tabpanel">
+          <!-- Top spacer for virtual scrolling -->
+          {#if paginatedPorts.length > 50 && topSpacerHeight > 0}
+            <div style="height: {topSpacerHeight}px;" aria-hidden="true"></div>
+          {/if}
+
+          {#each virtualPorts as group (getGroupKey(group))}
             {@const groupKey = getGroupKey(group)}
             {@const isExpanded = expandedGroups.has(groupKey)}
             {@const hasMultiple = group.connections.length > 1}
@@ -446,18 +667,24 @@
             <!-- Group Header Row -->
             <div
               class="port-row {hasMultiple ? 'group-header' : ''}"
-              tabindex="0"
+              role="row"
+              aria-label="Port {group.port}, {group.processName}, {group.state}"
             >
-              <div class="cell-expand">
+              <div class="cell-expand" role="cell">
                 {#if hasMultiple}
                   <button
                     class="expand-btn"
                     onclick={() => toggleGroup(groupKey)}
+                    aria-expanded={isExpanded}
+                    aria-label={isExpanded
+                      ? 'Collapse connections'
+                      : 'Expand connections'}
+                    aria-controls="group-{groupKey}"
                   >
                     {#if isExpanded}
-                      <ChevronDown size={14} />
+                      <ChevronDown size={14} aria-hidden="true" />
                     {:else}
-                      <ChevronRight size={14} />
+                      <ChevronRight size={14} aria-hidden="true" />
                     {/if}
                   </button>
                 {/if}
@@ -485,6 +712,12 @@
               </div>
               <div class="cell-process">
                 <span class="process-name">{group.processName}</span>
+                {#if detectedServices.has(group.port)}
+                  <ServiceBadge
+                    service={detectedServices.get(group.port)!}
+                    size="sm"
+                  />
+                {/if}
               </div>
               <div class="cell-pid">
                 <span class="pid-number">{group.pid}</span>
@@ -657,12 +890,17 @@
               {/each}
             {/if}
           {/each}
+
+          <!-- Bottom spacer for virtual scrolling -->
+          {#if paginatedPorts.length > 50 && bottomSpacerHeight > 0}
+            <div style="height: {bottomSpacerHeight}px;"></div>
+          {/if}
         </div>
       {/if}
     </div>
   </div>
 
-  <!-- Footer -->
+  <!-- Footer with Pagination -->
   <PortMapFooter
     lastScan={portStore.lastScan}
     groupCount={groupedPorts.length}
@@ -670,6 +908,12 @@
     totalPorts={portStore.stats.total}
     {isPaused}
     onTogglePause={togglePause}
+    {currentPage}
+    {totalPages}
+    totalItems={groupedPorts.length}
+    {itemsPerPage}
+    onPageChange={handlePageChange}
+    onPageSizeChange={handlePageSizeChange}
   />
 </div>
 
@@ -924,6 +1168,13 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
 
+  /* Filter Section Wrapper */
+  .filter-section-wrapper {
+    padding: 0.5rem 1.5rem 0.75rem 1.5rem;
+    background: var(--background);
+    border-bottom: 1px solid var(--border);
+  }
+
   /* Toolbar */
   .toolbar {
     display: flex;
@@ -1047,8 +1298,11 @@
   /* Table Header */
   .table-header {
     display: grid;
-    grid-template-columns: 40px 140px 90px 1fr 90px 140px 1fr 160px 80px;
-    gap: 0.5rem;
+    grid-template-columns: 40px 100px 80px minmax(
+        150px,
+        1.5fr
+      ) 80px 140px minmax(180px, 1.2fr) minmax(140px, 1fr) 70px;
+    gap: 0.75rem;
     background: var(--muted);
     border-bottom: 1px solid var(--border);
     position: sticky;
@@ -1119,8 +1373,11 @@
   /* Port Rows */
   .port-row {
     display: grid;
-    grid-template-columns: 40px 140px 90px 1fr 90px 140px 1fr 160px 80px;
-    gap: 0.5rem;
+    grid-template-columns: 40px 100px 80px minmax(
+        150px,
+        1.5fr
+      ) 80px 140px minmax(180px, 1.2fr) minmax(140px, 1fr) 70px;
+    gap: 0.75rem;
     align-items: center;
     border-bottom: 1px solid var(--border);
     transition: all 0.2s ease;
@@ -1182,8 +1439,12 @@
   }
 
   .cell-process {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
     overflow: hidden;
-    text-overflow: ellipsis;
+    flex-wrap: wrap;
   }
 
   .cell-pid {
@@ -1200,6 +1461,12 @@
 
   .cell-address {
     overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-left: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
   }
 
   .cell-info {
