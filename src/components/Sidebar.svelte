@@ -26,7 +26,8 @@
     Network as NetworkIcon,
     Terminal,
     Activity,
-    Container
+    Container,
+    BookOpen
   } from 'lucide-svelte';
   import { IconButton, NavButton, StatusBadge } from '../lib/components';
   import type { ComponentType } from 'svelte';
@@ -200,6 +201,17 @@
         />
       </div>
     {/if}
+
+    <!-- Docs Button -->
+    <NavButton
+      icon={BookOpen}
+      label="Docs"
+      active={$currentView === 'docs'}
+      collapsed={isCollapsed}
+      title="Documentation"
+      onclick={() => handleNavigation('docs')}
+      onkeydown={(e) => handleKeyDown(e, 'docs')}
+    />
 
     <!-- Settings Button -->
     <NavButton

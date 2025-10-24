@@ -11,6 +11,7 @@
   import ShellView from './lib/components/Shell/ShellView.svelte';
   import NetworkMonitor from './routes/network/+page.svelte';
   import Docker from './routes/docker/+page.svelte';
+  import DocsView from './views/DocsView.svelte';
 
   let mounted = $state(false);
 
@@ -84,6 +85,8 @@
         <Docker />
       {:else if $currentView === 'shell'}
         <ShellView />
+      {:else if $currentView === 'docs'}
+        <DocsView />
       {:else if $currentView === 'settings'}
         <Settings />
       {/if}

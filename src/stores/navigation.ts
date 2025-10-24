@@ -7,6 +7,7 @@ export type View =
 	| 'network'
 	| 'docker'
 	| 'shell'
+	| 'docs'
 	| 'settings';
 
 export const currentView = writable<View>('dashboard');
