@@ -25,7 +25,9 @@
     Monitor,
     Network as NetworkIcon,
     Terminal,
-    Activity
+    Activity,
+    Link2,
+    Container
   } from 'lucide-svelte';
   import { IconButton, NavButton, StatusBadge } from '../lib/components';
   import type { ComponentType } from 'svelte';
@@ -56,6 +58,16 @@
       id: 'network',
       label: 'Network',
       icon: Activity
+    },
+    {
+      id: 'connections',
+      label: 'Connections',
+      icon: Link2
+    },
+    {
+      id: 'docker',
+      label: 'Docker',
+      icon: Container
     },
     {
       id: 'shell',

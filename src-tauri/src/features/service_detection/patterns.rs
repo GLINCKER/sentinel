@@ -83,6 +83,31 @@ pub fn get_builtin_patterns() -> Vec<ServicePattern> {
             health_check_path: Some("/".to_string()),
             icon: "flask".to_string(),
         },
+        ServicePattern {
+            name: "FastAPI".to_string(),
+            category: ServiceCategory::WebFramework,
+            process_patterns: vec!["python".to_string(), "uvicorn".to_string()],
+            port_hints: vec![8000, 8080],
+            command_patterns: vec!["uvicorn".to_string(), "fastapi".to_string()],
+            description: "Modern, fast Python web framework".to_string(),
+            docs_url: Some("https://fastapi.tiangolo.com".to_string()),
+            health_check_path: Some("/docs".to_string()),
+            icon: "fastapi".to_string(),
+        },
+        ServicePattern {
+            name: "Spring Boot".to_string(),
+            category: ServiceCategory::WebFramework,
+            process_patterns: vec!["java".to_string()],
+            port_hints: vec![8080, 8081, 9090],
+            command_patterns: vec![
+                "spring-boot".to_string(),
+                "org.springframework.boot".to_string(),
+            ],
+            description: "Java-based enterprise framework".to_string(),
+            docs_url: Some("https://spring.io/projects/spring-boot".to_string()),
+            health_check_path: Some("/actuator/health".to_string()),
+            icon: "springboot".to_string(),
+        },
         // Databases
         ServicePattern {
             name: "PostgreSQL".to_string(),

@@ -77,6 +77,7 @@ fn parse_lsof_line(line: &str, re: &Regex) -> Result<Option<PortInfo>> {
         state,
         local_address,
         remote_address,
+        command: None, // Will be enriched later with sysinfo
         traffic: NetworkTraffic::default(),
     }))
 }
@@ -153,6 +154,7 @@ fn parse_netstat_line(line: &str, re: &Regex) -> Result<Option<PortInfo>> {
         state,
         local_address,
         remote_address,
+        command: None, // Will be enriched later with sysinfo
         traffic: NetworkTraffic::default(),
     }))
 }

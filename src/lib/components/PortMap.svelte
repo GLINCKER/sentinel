@@ -117,7 +117,7 @@
           portInfo.port,
           portInfo.pid,
           portInfo.processName,
-          undefined // TODO: Get command from process info
+          portInfo.command || undefined
         );
 
         return service ? { port: portInfo.port, service } : null;
