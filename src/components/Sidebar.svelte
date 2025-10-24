@@ -26,7 +26,6 @@
     Network as NetworkIcon,
     Terminal,
     Activity,
-    Link2,
     Container
   } from 'lucide-svelte';
   import { IconButton, NavButton, StatusBadge } from '../lib/components';
@@ -58,11 +57,6 @@
       id: 'network',
       label: 'Network',
       icon: Activity
-    },
-    {
-      id: 'connections',
-      label: 'Connections',
-      icon: Link2
     },
     {
       id: 'docker',

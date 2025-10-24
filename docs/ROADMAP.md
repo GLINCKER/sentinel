@@ -118,17 +118,11 @@ Sentinel aims to become the **go-to development guardian** for developers worldw
 - ✅ Window dragging with custom title bar
 - ✅ Consistent UI design across all pages
 
-#### ✅ Active Connections Monitoring (Phase 3E - Complete)
-- ✅ Active TCP/UDP connection tracking
-- ✅ Connection summary statistics
-- ✅ Top bandwidth consumers identification
-- ✅ Process-to-connection mapping
-- ✅ Connections filtering (protocol, state, process)
-- ✅ Sortable connections table
-- ✅ Real-time connection monitoring
-- ✅ Compact, information-dense UI
-- [ ] Network alerts/notifications (deferred)
-- [ ] Export network statistics (deferred)
+#### ✅ Active Connections Monitoring (Phase 3E - Removed)
+- ❌ Feature removed due to 80% overlap with Port Map functionality
+- ❌ Performance concerns (lsof subprocess calls per connection)
+- ✅ Port Map page provides comprehensive port and connection info
+- Note: Network page provides bandwidth and interface monitoring
 
 #### ✅ Docker Integration (Phase 3F - Complete)
 - ✅ Docker container monitoring

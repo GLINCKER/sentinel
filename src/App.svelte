@@ -10,7 +10,6 @@
   import KeyboardShortcuts from './components/KeyboardShortcuts.svelte';
   import ShellView from './lib/components/Shell/ShellView.svelte';
   import NetworkMonitor from './routes/network/+page.svelte';
-  import Connections from './routes/connections/+page.svelte';
   import Docker from './routes/docker/+page.svelte';
 
   let mounted = $state(false);
@@ -81,8 +80,6 @@
         <PortMapView />
       {:else if $currentView === 'network'}
         <NetworkMonitor />
-      {:else if $currentView === 'connections'}
-        <Connections />
       {:else if $currentView === 'docker'}
         <Docker />
       {:else if $currentView === 'shell'}
