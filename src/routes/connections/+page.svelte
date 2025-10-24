@@ -282,13 +282,13 @@
     </div>
 
     <div class="filter-controls">
-      <select bind:value={protocolFilter}>
+      <select bind:value={protocolFilter} class="filter-select">
         <option value="all">All Protocols</option>
         <option value="TCP">TCP</option>
         <option value="UDP">UDP</option>
       </select>
 
-      <select bind:value={stateFilter}>
+      <select bind:value={stateFilter} class="filter-select">
         <option value="all">All States</option>
         {#each uniqueStates as state (state)}
           <option value={state}>{state}</option>
@@ -678,29 +678,34 @@
     align-items: center;
   }
 
-  select {
-    padding: var(--space-xs) var(--space-sm);
+  .filter-select {
+    padding: var(--space-xs) 2rem var(--space-xs) var(--space-sm);
     height: 36px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    background: var(--muted);
+    border: 1px solid transparent;
     border-radius: var(--radius-md);
     font-size: 0.875rem;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--foreground);
     cursor: pointer;
     transition: all var(--transition-fast);
     font-family: inherit;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 5L6 8L9 5' stroke='%23666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.625rem center;
+    min-width: 140px;
   }
 
-  select:hover {
-    border-color: var(--accent-primary);
-    background: var(--bg-hover);
+  .filter-select:hover {
+    border-color: var(--border);
   }
 
-  select:focus {
+  .filter-select:focus {
     outline: none;
-    border-color: var(--accent-primary);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    background: var(--background);
+    border-color: var(--foreground);
+    box-shadow: 0 0 0 1px var(--foreground);
   }
 
   /* Table - Compact Design */
