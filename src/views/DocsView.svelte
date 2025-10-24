@@ -56,42 +56,91 @@
 
   // Render markdown with improved formatting
   function renderMarkdown(content: string): string {
-    let html = content
-      // Code blocks first
-      .replace(/```([^```]+)```/gim, '<pre><code>$1</code></pre>')
+    const lines = content.split('\n');
+    let html = '';
+    let i = 0;
+
+    while (i < lines.length) {
+      const line = lines[i].trim();
+
+      // Skip empty lines
+      if (!line) {
+        i++;
+        continue;
+      }
+
+      // Code blocks
+      if (line.startsWith('```')) {
+        let code = '';
+        i++;
+        while (i < lines.length && !lines[i].trim().startsWith('```')) {
+          code += lines[i] + '\n';
+          i++;
+        }
+        html += `<pre><code>${code.trim()}</code></pre>`;
+        i++;
+        continue;
+      }
+
       // Headers
-      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-      // Bold and italic
-      .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/gim, '<em>$1</em>')
-      // Inline code
-      .replace(/`([^`]+)`/gim, '<code>$1</code>')
+      if (line.startsWith('### ')) {
+        html += `<h3>${line.slice(4)}</h3>`;
+        i++;
+        continue;
+      }
+      if (line.startsWith('## ')) {
+        html += `<h2>${line.slice(3)}</h2>`;
+        i++;
+        continue;
+      }
+      if (line.startsWith('# ')) {
+        html += `<h1>${line.slice(2)}</h1>`;
+        i++;
+        continue;
+      }
+
       // Lists
-      .replace(/^- (.*$)/gim, '<li>$1</li>')
-      .replace(/^\d+\. (.*$)/gim, '<li>$1</li>');
+      if (line.match(/^[-•]\s/) || line.match(/^\d+\.\s/)) {
+        let items = '';
+        while (i < lines.length) {
+          const listLine = lines[i].trim();
+          if (!listLine) {
+            i++;
+            break;
+          }
+          const match =
+            listLine.match(/^[-•]\s+(.+)/) || listLine.match(/^\d+\.\s+(.+)/);
+          if (match) {
+            let text = match[1];
+            text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+            text = text.replace(/`(.+?)`/g, '<code>$1</code>');
+            items += `<li>${text}</li>`;
+            i++;
+          } else {
+            break;
+          }
+        }
+        html += `<ul>${items}</ul>`;
+        continue;
+      }
 
-    // Wrap consecutive list items in ul/ol
-    html = html.replace(/(<li>.*<\/li>\n?)+/gim, (match) => {
-      return '<ul>' + match + '</ul>';
-    });
-
-    // Paragraphs
-    html = html.replace(/\n\n/g, '</p><p>');
-    html = '<p>' + html + '</p>';
-
-    // Clean up empty paragraphs
-    html = html.replace(/<p><\/p>/g, '');
-    html = html.replace(/<p>(<h[123]>)/g, '$1');
-    html = html.replace(/(<\/h[123]>)<\/p>/g, '$1');
-    html = html.replace(/<p>(<ul>)/g, '$1');
-    html = html.replace(/(<\/ul>)<\/p>/g, '$1');
-    html = html.replace(/<p>(<pre>)/g, '$1');
-    html = html.replace(/(<\/pre>)<\/p>/g, '$1');
-
-    // Line breaks within paragraphs
-    html = html.replace(/\n/g, '<br />');
+      // Paragraphs
+      let paragraph = line;
+      i++;
+      while (
+        i < lines.length &&
+        lines[i].trim() &&
+        !lines[i].trim().match(/^(#{1,3}\s|[-•]\s|\d+\.\s|```)/)
+      ) {
+        paragraph += ' ' + lines[i].trim();
+        i++;
+      }
+      paragraph = paragraph.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      paragraph = paragraph.replace(/\*(.+?)\*/g, '<em>$1</em>');
+      paragraph = paragraph.replace(/`(.+?)`/g, '<code>$1</code>');
+      html += `<p>${paragraph}</p>`;
+    }
 
     return html;
   }
@@ -229,7 +278,7 @@
   .docs-container {
     flex: 1;
     overflow: hidden;
-    padding: var(--space-md);
+    padding: var(--space-xs);
   }
 
   .api-docs-toggle {
@@ -282,8 +331,8 @@
   /* Docs Layout */
   .docs-layout {
     display: grid;
-    grid-template-columns: 260px 1fr;
-    gap: var(--space-md);
+    grid-template-columns: 240px 1fr;
+    gap: var(--space-xs);
     height: 100%;
   }
 
@@ -291,7 +340,7 @@
   .docs-sidebar {
     display: flex;
     flex-direction: column;
-    gap: var(--space-sm);
+    gap: var(--space-xs);
     height: 100%;
     overflow: hidden;
   }
@@ -341,11 +390,11 @@
     align-items: center;
     gap: var(--space-xs);
     width: 100%;
-    padding: 6px var(--space-sm);
+    padding: 5px var(--space-xs);
     background: transparent;
     border: none;
     border-radius: var(--radius-sm);
-    font-size: 0.813rem;
+    font-size: 0.75rem;
     font-weight: 600;
     color: var(--foreground);
     text-align: left;
@@ -375,17 +424,17 @@
     display: flex;
     flex-direction: column;
     gap: 1px;
-    padding-left: var(--space-md);
-    margin-top: 2px;
-    margin-bottom: 4px;
+    padding-left: var(--space-sm);
+    margin-top: 1px;
+    margin-bottom: 2px;
   }
 
   .article-button {
-    padding: 4px var(--space-sm);
+    padding: 3px var(--space-xs);
     background: transparent;
     border: none;
     border-radius: var(--radius-sm);
-    font-size: 0.75rem;
+    font-size: 0.688rem;
     color: var(--muted-foreground);
     text-align: left;
     cursor: pointer;
@@ -410,7 +459,7 @@
     overflow-x: hidden;
     background: var(--card);
     border-radius: var(--radius-lg);
-    padding: var(--space-lg) var(--space-xl);
+    padding: var(--space-md) var(--space-lg);
   }
 
   .article {
@@ -420,11 +469,11 @@
   .breadcrumb {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.75rem;
+    gap: 4px;
+    font-size: 0.688rem;
     color: var(--muted-foreground);
-    margin-bottom: var(--space-sm);
-    padding: 4px 0;
+    margin-bottom: var(--space-xs);
+    padding: 2px 0;
   }
 
   .breadcrumb .current {
@@ -433,70 +482,90 @@
   }
 
   .article-title {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--foreground);
-    margin-bottom: var(--space-sm);
+    margin-bottom: var(--space-xs);
     line-height: 1.2;
   }
 
   .tags {
     display: flex;
-    gap: var(--space-xs);
-    margin-bottom: var(--space-md);
+    gap: 4px;
+    margin-bottom: var(--space-sm);
     flex-wrap: wrap;
   }
 
   .tag {
-    padding: var(--space-xs) var(--space-sm);
+    padding: 2px var(--space-xs);
     background: var(--muted);
     border-radius: var(--radius-sm);
-    font-size: 0.75rem;
+    font-size: 0.688rem;
     font-weight: 600;
     color: var(--muted-foreground);
   }
 
   .article-body {
-    line-height: 1.6;
+    line-height: 1.5;
     color: var(--foreground);
-    font-size: 0.9375rem;
+    font-size: 0.875rem;
   }
 
   .article-body :global(h1),
   .article-body :global(h2),
   .article-body :global(h3) {
-    margin-top: var(--space-md);
-    margin-bottom: var(--space-sm);
+    margin: 0;
+    margin-top: 12px;
+    margin-bottom: 6px;
     font-weight: 600;
     color: var(--foreground);
     line-height: 1.3;
   }
 
   .article-body :global(h1) {
-    font-size: 1.625rem;
-    margin-top: var(--space-lg);
+    font-size: 1.375rem;
+    margin-top: 16px;
+  }
+
+  .article-body :global(h1:first-child),
+  .article-body :global(h2:first-child),
+  .article-body :global(h3:first-child) {
+    margin-top: 0;
   }
 
   .article-body :global(h2) {
-    font-size: 1.375rem;
-  }
-
-  .article-body :global(h3) {
     font-size: 1.125rem;
   }
 
+  .article-body :global(h3) {
+    font-size: 1rem;
+  }
+
   .article-body :global(p) {
-    margin: var(--space-sm) 0;
+    margin: 0;
+    margin-bottom: 8px;
+  }
+
+  .article-body :global(p:last-child) {
+    margin-bottom: 0;
   }
 
   .article-body :global(ul),
   .article-body :global(ol) {
-    margin: var(--space-sm) 0;
-    padding-left: var(--space-lg);
+    margin: 0;
+    margin-bottom: 8px;
+    padding-left: 20px;
+  }
+
+  .article-body :global(ul:last-child),
+  .article-body :global(ol:last-child) {
+    margin-bottom: 0;
   }
 
   .article-body :global(li) {
-    margin: 4px 0;
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
   }
 
   .article-body :global(code) {
@@ -509,12 +578,12 @@
   }
 
   .article-body :global(pre) {
-    padding: var(--space-sm) var(--space-md);
+    padding: var(--space-xs) var(--space-sm);
     background: var(--muted);
     border-radius: var(--radius-md);
     overflow-x: auto;
-    margin: var(--space-sm) 0;
-    font-size: 0.8125rem;
+    margin: var(--space-xs) 0;
+    font-size: 0.75rem;
   }
 
   .article-body :global(pre code) {

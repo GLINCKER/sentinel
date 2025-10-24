@@ -269,6 +269,96 @@ Create and manage multiple terminal instances:
 - Terminal inherits system PATH
 - Each shell is independent
 				`
+			},
+			{
+				id: 'process-management',
+				title: 'Process Management',
+				tags: ['processes', 'dashboard', 'monitoring'],
+				content: `
+# Process Management
+
+## Overview
+The Dashboard is your central hub for managing development processes. Monitor, control, and troubleshoot all your services from one place.
+
+## Adding Processes
+1. Click **Add Process** button
+2. Enter process name
+3. Specify command to run
+4. Set working directory (optional)
+5. Configure environment variables (optional)
+6. Click **Save**
+
+## Process States
+- **Running**: Active and responding
+- **Stopped**: Not currently executing
+- **Failed**: Exited with error code
+- **Starting**: Initialization in progress
+
+## Quick Actions
+- **Start**: Launch a stopped process
+- **Stop**: Gracefully terminate process
+- **Restart**: Stop and start in one action
+- **View Logs**: See stdout and stderr output
+
+## Process Details
+Click any process to view:
+- Real-time log output
+- Resource usage (CPU/Memory)
+- Port information
+- Environment variables
+- Working directory
+
+## Best Practices
+- Use descriptive process names
+- Set appropriate working directories
+- Configure environment variables for different environments
+- Monitor logs for errors
+- Restart processes after configuration changes
+				`
+			},
+			{
+				id: 'keyboard-shortcuts',
+				title: 'Keyboard Shortcuts',
+				tags: ['shortcuts', 'hotkeys', 'productivity'],
+				content: `
+# Keyboard Shortcuts
+
+## Global Shortcuts
+- **Cmd/Ctrl + ,**: Open Settings
+- **Cmd/Ctrl + R**: Refresh current view
+- **Cmd/Ctrl + F**: Focus search (where available)
+- **Esc**: Close modals/dialogs
+
+## Navigation
+- **Cmd/Ctrl + 1**: Dashboard
+- **Cmd/Ctrl + 2**: Port Map
+- **Cmd/Ctrl + 3**: Network
+- **Cmd/Ctrl + 4**: Docker
+- **Cmd/Ctrl + 5**: Terminal
+
+## Process Management
+- **Space**: Start/Stop selected process
+- **R**: Restart selected process
+- **L**: View logs for selected process
+- **↑/↓**: Navigate process list
+
+## Port Map
+- **/**: Focus search
+- **Enter**: Kill selected port
+- **C**: Copy port number
+- **F**: Toggle filters
+
+## Terminal
+- **Cmd/Ctrl + T**: New terminal tab
+- **Cmd/Ctrl + W**: Close current tab
+- **Cmd/Ctrl + Tab**: Next tab
+- **Cmd/Ctrl + Shift + Tab**: Previous tab
+
+## Tips
+- Most shortcuts work across all views
+- Customize shortcuts in Settings
+- Hold Shift to see available shortcuts
+				`
 			}
 		]
 	},
