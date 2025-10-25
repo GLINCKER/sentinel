@@ -98,6 +98,10 @@ pub enum SentinelError {
     #[error("Docker error: {0}")]
     DockerError(String),
 
+    /// Invalid input provided.
+    #[error("Invalid input: {message}")]
+    InvalidInput { message: String },
+
     /// Generic error with custom message.
     #[error("{0}")]
     Other(String),

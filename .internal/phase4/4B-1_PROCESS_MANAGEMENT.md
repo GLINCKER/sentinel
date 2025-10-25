@@ -147,7 +147,41 @@ pub enum FrameworkType {
 }
 ```
 
-#### 3. Framework Auto-Detection
+#### 3. Git Repository & Project Discovery
+
+```rust
+/// Browse for Git repositories (similar to GitHub Desktop)
+#[tauri::command]
+pub async fn browse_git_repositories(start_path: Option<String>) -> Result<Vec<GitRepository>, String>
+
+/// Scan a directory for projects (supports monorepos)
+#[tauri::command]
+pub async fn scan_directory_for_projects(dir_path: String) -> Result<Vec<DetectedProject>, String>
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct GitRepository {
+    pub path: String,
+    pub name: String,
+    pub branch: String,
+    pub is_dirty: bool,
+    pub remote_url: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct DetectedProject {
+    pub path: String,
+    pub name: String,
+    pub framework_type: FrameworkType,
+    pub confidence: f32,
+    pub suggested_command: String,
+    pub suggested_args: Vec<String>,
+    pub suggested_port: Option<u16>,
+    pub package_manager: Option<String>,  // npm, pnpm, yarn, pip, gradle, maven
+    pub detected_files: Vec<String>,
+}
+```
+
+#### 4. Framework Auto-Detection
 
 ```rust
 /// Detect framework type from a directory
@@ -162,6 +196,7 @@ pub struct FrameworkDetection {
     pub suggested_command: String,    // e.g., "npm"
     pub suggested_args: Vec<String>,  // e.g., ["run", "dev"]
     pub suggested_port: Option<u16>,  // e.g., 3000 for Next.js
+    pub package_manager: Option<String>,
 }
 ```
 

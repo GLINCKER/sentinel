@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PTY Test</title>
+</head>
+<body>
+    <h1>PTY Process Test</h1>
+    <button id="spawn">Spawn Echo Process</button>
+    <button id="list">List Processes</button>
+    <button id="kill">Kill Process</button>
+    <pre id="output"></pre>
+
+    <script type="module">
+        import { invoke } from '@tauri-apps/api/core';
+        import { listen } from '@tauri-apps/api/event';
+
+        const output = document.getElementById('output');
+        
+        // Listen for process output events
+        await listen('process-output', (event) => {
+            console.log('Process output:', event.payload);
+            output.textContent += JSON.stringify(event.payload, null, 2) + '\n';
+        });
+
+        // Listen for process exit events
+        await listen('process-exit', (event) => {
+            console.log('Process exit:', event.payload);
+            output.textContent += 'EXIT: ' + JSON.stringify(event.payload, null, 2) + '\n';
+        });
+
+        document.getElementById('spawn').addEventListener('click', async () => {
+            try {
+                const pid = await invoke('spawn_pty_process', {
+                    processId: 'test-echo',
+                    command: 'echo',
+                    args: ['Hello from PTY!'],
+                    cwd: null,
+                    env: null
+                });
+                output.textContent += `Spawned process with PID: ${pid}\n`;
+            } catch (e) {
+                output.textContent += `Error: ${e}\n`;
+            }
+        });
+
+        document.getElementById('list').addEventListener('click', async () => {
+            try {
+                const processes = await invoke('list_pty_processes');
+                output.textContent += 'Running processes: ' + JSON.stringify(processes, null, 2) + '\n';
+            } catch (e) {
+                output.textContent += `Error: ${e}\n`;
+            }
+        });
+
+        document.getElementById('kill').addEventListener('click', async () => {
+            try {
+                await invoke('kill_pty_process', {
+                    processId: 'test-echo'
+                });
+                output.textContent += 'Killed test-echo\n';
+            } catch (e) {
+                output.textContent += `Error: ${e}\n`;
+            }
+        });
+    </script>
+</body>
+</html>

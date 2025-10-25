@@ -111,6 +111,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             // Process commands
             commands::start_process,
+            commands::start_process_by_name,
             commands::stop_process,
             commands::restart_process,
             commands::get_process,
@@ -120,9 +121,45 @@ pub fn run() {
             commands::get_process_logs,
             commands::get_recent_process_logs,
             commands::search_process_logs,
+            commands::clear_process_logs,
             // Process health commands
             commands::check_process_health,
             commands::stop_process_gracefully,
+            // Process persistence commands
+            commands::load_config,
+            commands::save_process_to_config,
+            commands::remove_process_from_config,
+            commands::get_config_file_path,
+            commands::start_processes_from_config,
+            // External process log attachment
+            commands::attach_to_external_process,
+            commands::tail_log_file,
+            commands::detach_external_logs,
+            #[cfg(target_os = "macos")]
+            commands::capture_with_dtrace,
+            // PTY process commands
+            commands::spawn_pty_process,
+            commands::kill_pty_process,
+            commands::list_pty_processes,
+            commands::is_pty_process_running,
+            commands::restart_pty_process,
+            commands::get_pty_configs,
+            // Managed process commands
+            commands::create_process_config,
+            commands::update_process_config,
+            commands::delete_process_config,
+            commands::list_process_configs,
+            commands::get_process_config,
+            commands::detect_framework_type,
+            commands::get_framework_templates_list,
+            commands::scan_directory_for_projects,
+            commands::start_process_from_config,
+            commands::stop_process_by_config_id,
+            commands::restart_managed_process,
+            commands::get_process_status_by_config,
+            commands::get_managed_process_logs,
+            commands::export_process_configs,
+            commands::import_process_configs,
             // System commands
             commands::get_system_stats,
             commands::get_process_stats,
@@ -142,6 +179,7 @@ pub fn run() {
             features::network_monitor::get_network_interfaces,
             // Docker commands
             features::docker::get_docker_info,
+            features::docker::reconnect_docker,
             features::docker::list_docker_containers,
             features::docker::list_docker_images,
             features::docker::get_docker_container_stats,
@@ -150,6 +188,9 @@ pub fn run() {
             features::docker::restart_docker_container,
             features::docker::pause_docker_container,
             features::docker::unpause_docker_container,
+            features::docker::start_docker_desktop,
+            features::docker::stop_docker_desktop,
+            features::docker::restart_docker_desktop,
         ])
         .setup(|app| {
             // Initialize tracing

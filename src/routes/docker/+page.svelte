@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { invoke } from '@tauri-apps/api/core';
   import PageHeader from '$lib/components/PageHeader.svelte';
   import Toggle from '$lib/components/Toggle.svelte';
+  import { useVisibilityPolling } from '$lib/hooks/useVisibilityPolling.svelte';
   import {
     getDockerInfo,
     listDockerContainers,
@@ -21,14 +22,14 @@
   } from '$lib/types/docker';
   import {
     Container,
-    Play,
     Square,
-    RotateCw,
     Pause,
+    Play,
     PlayCircle,
     Cpu,
     HardDrive,
     RefreshCw,
+    RotateCw,
     CheckCircle2,
     XCircle,
     Clock,
@@ -43,12 +44,12 @@
   let containerStats = $state<Map<string, ContainerStats>>(new Map());
   let isLoading = $state(true);
   let error: string | null = $state(null);
-  let updateInterval: ReturnType<typeof setInterval>;
   let pollingInterval = $state(5000); // 5 seconds default
   let showStopped = $state(false); // Default: hide stopped containers
   let isRefreshing = $state(false);
   let activeTab = $state<'containers' | 'images'>('containers');
   let viewMode = $state<'grid' | 'list'>('grid');
+  let isDockerActionPending = $state(false);
 
   // Filtered and sorted containers
   let filteredContainers = $derived.by(() => {
@@ -64,13 +65,27 @@
     });
   });
 
+  // Helper to add timeout to promises
+  function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
+      )
+    ]);
+  }
+
   async function loadDockerData() {
     try {
-      const [info, containerList, imageList] = await Promise.all([
-        getDockerInfo(),
-        listDockerContainers(true), // Always fetch all, we'll filter in UI
-        listDockerImages()
-      ]);
+      // Add 10 second timeout to prevent hanging
+      const [info, containerList, imageList] = await withTimeout(
+        Promise.all([
+          getDockerInfo(),
+          listDockerContainers(true), // Always fetch all, we'll filter in UI
+          listDockerImages()
+        ]),
+        10000
+      );
 
       dockerInfo = info;
       containers = containerList;
@@ -107,10 +122,18 @@
 
   async function handleRefresh() {
     isRefreshing = true;
-    await loadDockerData();
-    setTimeout(() => {
-      isRefreshing = false;
-    }, 600);
+    try {
+      // Force reconnection to Docker daemon
+      await invoke('reconnect_docker');
+      // Then load fresh data
+      await loadDockerData();
+    } catch (err) {
+      console.error('Refresh error:', err);
+    } finally {
+      setTimeout(() => {
+        isRefreshing = false;
+      }, 600);
+    }
   }
 
   async function handleStart(containerId: string) {
@@ -215,19 +238,34 @@
     }
   }
 
-  onMount(() => {
-    loadDockerData();
-
-    updateInterval = setInterval(() => {
-      loadDockerData();
-    }, pollingInterval);
+  // Use visibility-aware polling to avoid unnecessary API calls when page is hidden
+  useVisibilityPolling({
+    interval: pollingInterval,
+    callback: loadDockerData,
+    immediate: true
   });
 
-  onDestroy(() => {
-    if (updateInterval) {
-      clearInterval(updateInterval);
+  async function handleStopDockerDesktop() {
+    if (!confirm('Stop Docker Desktop? All containers will stop.')) return;
+    try {
+      isDockerActionPending = true;
+      await invoke('stop_docker_desktop');
+      // Poll for Docker to become unavailable
+      let attempts = 0;
+      const pollInterval = setInterval(async () => {
+        attempts++;
+        await invoke('reconnect_docker');
+        await loadDockerData();
+        if (!dockerInfo?.available || attempts > 15) {
+          clearInterval(pollInterval);
+          isDockerActionPending = false;
+        }
+      }, 1000);
+    } catch (err) {
+      error = `Failed to stop Docker Desktop: ${err}`;
+      isDockerActionPending = false;
     }
-  });
+  }
 </script>
 
 <div class="docker-page">
@@ -237,6 +275,20 @@
     icon={Container}
   >
     <div class="header-actions">
+      {#if dockerInfo && dockerInfo.available}
+        <button
+          class="btn-docker-action btn-stop"
+          onclick={handleStopDockerDesktop}
+          disabled={isDockerActionPending}
+          title="Stop Docker Desktop"
+        >
+          <Square
+            size={16}
+            class={isDockerActionPending ? 'animate-pulse' : ''}
+          />
+          {isDockerActionPending ? 'Stopping...' : 'Stop Docker'}
+        </button>
+      {/if}
       <button
         class="btn-refresh"
         onclick={handleRefresh}
@@ -1488,5 +1540,92 @@
   .error-banner button:hover {
     background: #dc2626;
     transform: translateY(-1px);
+  }
+
+  /* Docker Desktop Control Buttons */
+  .btn-docker-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+
+  .btn-docker-action:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-docker-action.btn-start {
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.3);
+    color: rgb(34, 197, 94);
+  }
+
+  .btn-docker-action.btn-start:hover:not(:disabled) {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: rgb(34, 197, 94);
+    transform: translateY(-1px);
+  }
+
+  .btn-docker-action.btn-stop {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: rgb(239, 68, 68);
+  }
+
+  .btn-docker-action.btn-stop:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgb(239, 68, 68);
+    transform: translateY(-1px);
+  }
+
+  .btn-docker-action.btn-restart {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.3);
+    color: rgb(59, 130, 246);
+  }
+
+  .btn-docker-action.btn-restart:hover:not(:disabled) {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgb(59, 130, 246);
+    transform: translateY(-1px);
+  }
+
+  .btn-docker-action:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  /* Animations */
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  :global(.animate-spin) {
+    animation: spin 1s linear infinite;
+  }
+
+  :global(.animate-pulse) {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 </style>

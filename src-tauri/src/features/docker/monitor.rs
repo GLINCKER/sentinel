@@ -72,6 +72,14 @@ impl DockerMonitor {
         self.available
     }
 
+    /// Reconnect to Docker daemon (useful after Docker starts/stops)
+    pub fn reconnect(&mut self) {
+        tracing::info!("Reconnecting to Docker daemon...");
+        let new_monitor = Self::new();
+        self.docker = new_monitor.docker;
+        self.available = new_monitor.available;
+    }
+
     /// Get Docker system information
     pub async fn get_info(&self) -> crate::error::Result<DockerInfo> {
         if !self.available || self.docker.is_none() {

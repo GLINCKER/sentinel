@@ -8,6 +8,7 @@ use chrono::Utc;
 use std::collections::HashMap;
 use std::process::Stdio;
 use std::sync::Arc;
+use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
@@ -350,6 +351,50 @@ impl ProcessManager {
         self.start(config).await
     }
 
+    /// Starts a stopped process by name using its stored configuration.
+    ///
+    /// This is useful for re-starting processes that were previously stopped
+    /// without needing to provide the full configuration again.
+    ///
+    /// # Arguments
+    /// * `name` - Name of the process to start
+    ///
+    /// # Returns
+    /// * `Ok(ProcessInfo)` - Started process information
+    /// * `Err(SentinelError)` - Process not found or already running
+    ///
+    /// # Errors
+    /// Returns error if:
+    /// - Process with this name doesn't exist in manager
+    /// - Process is already running
+    /// - Failed to spawn the process
+    pub async fn start_by_name(&mut self, name: &str) -> Result<ProcessInfo> {
+        // Get the stored config
+        let handle = self
+            .processes
+            .get(name)
+            .ok_or_else(|| SentinelError::ProcessNotFound {
+                name: name.to_string(),
+            })?;
+
+        // Check if already running
+        if handle.info.is_running() {
+            let pid = handle.info.pid.unwrap_or(0);
+            return Err(SentinelError::ProcessAlreadyRunning {
+                name: name.to_string(),
+                pid,
+            });
+        }
+
+        let config = handle.config.clone();
+
+        // Remove the stopped process handle
+        self.processes.remove(name);
+
+        // Start with the stored config
+        self.start(config).await
+    }
+
     /// Gets information about a process.
     ///
     /// # Arguments
@@ -368,6 +413,42 @@ impl ProcessManager {
     /// Vector of all process information.
     pub fn list(&self) -> Vec<ProcessInfo> {
         self.processes.values().map(|h| h.info.clone()).collect()
+    }
+
+    /// Updates CPU and memory usage for all running processes.
+    ///
+    /// This should be called periodically to keep resource usage up-to-date.
+    pub fn update_resource_usage(&mut self) {
+        let mut sys = System::new();
+
+        // Collect PIDs of all running processes
+        let pids: Vec<Pid> = self
+            .processes
+            .values()
+            .filter_map(|h| h.info.pid.map(Pid::from_u32))
+            .collect();
+
+        // Refresh all processes at once
+        sys.refresh_processes_specifics(
+            ProcessesToUpdate::Some(&pids),
+            true,
+            ProcessRefreshKind::everything(),
+        );
+
+        // Update resource usage for each process
+        for handle in self.processes.values_mut() {
+            if let Some(pid_u32) = handle.info.pid {
+                let pid = Pid::from_u32(pid_u32);
+
+                if let Some(process) = sys.process(pid) {
+                    // Update CPU usage (percentage per core)
+                    handle.info.cpu_usage = process.cpu_usage();
+
+                    // Update memory usage (in bytes)
+                    handle.info.memory_usage = process.memory();
+                }
+            }
+        }
     }
 
     /// Checks if a process is running.
@@ -471,6 +552,26 @@ impl ProcessManager {
         let handle = self.processes.get(name)?;
         let buffer = handle.log_buffer.lock().await;
         Some(buffer.search(query))
+    }
+
+    /// Clears all logs for a specific process.
+    ///
+    /// # Arguments
+    /// * `name` - Name of the process
+    ///
+    /// # Returns
+    /// * `Ok(())` - Logs cleared successfully
+    /// * `Err(SentinelError)` - Process not found
+    pub async fn clear_logs(&self, name: &str) -> Result<()> {
+        let handle = self
+            .processes
+            .get(name)
+            .ok_or_else(|| SentinelError::ProcessNotFound {
+                name: name.to_string(),
+            })?;
+        let mut buffer = handle.log_buffer.lock().await;
+        buffer.clear();
+        Ok(())
     }
 
     /// Checks health of all processes and restarts crashed ones with auto_restart enabled.

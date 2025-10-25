@@ -35,8 +35,8 @@
     "windows": [
       {
         "title": "Sentinel",
-        "width": 1200,
-        "height": 800,
+        "width": 1400,
+        "height": 900,
         "minWidth": 800,
         "minHeight": 600,
         "resizable": true,
@@ -57,13 +57,18 @@
           "windows": ["main"],
           "permissions": [
             "core:window:allow-start-dragging",
+            "core:event:allow-listen",
+            "core:event:allow-emit",
+            "core:event:allow-unlisten",
             "pty:allow-spawn",
             "pty:allow-write",
             "pty:allow-read",
             "pty:allow-resize",
             "pty:allow-kill",
             "pty:allow-exitstatus",
-            "shell:allow-open"
+            "shell:allow-open",
+            "dialog:allow-open",
+            "dialog:allow-save"
           ]
         }
       ]

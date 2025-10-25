@@ -6,6 +6,7 @@ export type View =
 	| 'port-map'
 	| 'network'
 	| 'docker'
+	| 'processes'
 	| 'shell'
 	| 'docs'
 	| 'settings';

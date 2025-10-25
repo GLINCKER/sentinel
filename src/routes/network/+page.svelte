@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
   import PageHeader from '$lib/components/PageHeader.svelte';
+  import { useVisibilityPolling } from '$lib/hooks/useVisibilityPolling.svelte';
   import NetworkGraph from '$lib/components/NetworkMonitor/NetworkGraph.svelte';
   import InterfaceDetailsModal from '$lib/components/NetworkMonitor/InterfaceDetailsModal.svelte';
   import {
@@ -28,7 +28,6 @@
   let interfaces: NetworkInterfaceStats[] = $state([]);
   let isLoading = $state(true);
   let error: string | null = $state(null);
-  let updateInterval: ReturnType<typeof setInterval>;
   let selectedTimeRange = $state(300); // 5 minutes default
   let showInfoModal = $state(false);
   let selectedInterface: NetworkInterfaceStats | null = $state(null);
@@ -93,19 +92,11 @@
         })
   );
 
-  onMount(() => {
-    loadNetworkData();
-
-    // Update every 2 seconds
-    updateInterval = setInterval(() => {
-      loadNetworkData();
-    }, 2000);
-  });
-
-  onDestroy(() => {
-    if (updateInterval) {
-      clearInterval(updateInterval);
-    }
+  // Use visibility-aware polling to avoid unnecessary API calls when page is hidden
+  useVisibilityPolling({
+    interval: 2000, // 2 seconds
+    callback: loadNetworkData,
+    immediate: true
   });
 </script>
 

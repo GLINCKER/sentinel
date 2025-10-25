@@ -11,8 +11,8 @@
 -->
 
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
+  import { useVisibilityPolling } from '$lib/hooks/useVisibilityPolling.svelte';
   import {
     processes,
     systemStats,
@@ -21,6 +21,7 @@
     stopProcess,
     restartProcess
   } from '../stores/processes';
+  import { ptyProcessStore } from '../stores/ptyProcesses.svelte';
   import { navigateToProcess } from '../stores/navigation';
   import { settings } from '../stores/settings';
   import { metricsHistory } from '../stores/metricsHistory';
@@ -29,28 +30,32 @@
   import PollingControl from '../components/PollingControl.svelte';
   import ProcessSearch from '../components/ProcessSearch.svelte';
   import PageHeader from '$lib/components/PageHeader.svelte';
+  import LogViewer from '$lib/components/LogViewer.svelte';
   import { Play, Square, Package, LayoutDashboard } from 'lucide-svelte';
 
   let stopPolling: (() => void) | null = null;
   let isPerformingAction = $state(false);
   let systemUptime = $state<number>(0);
   let searchQuery = $state('');
+  let logViewerModal = $state<{ show: boolean; processName: string | null }>({
+    show: false,
+    processName: null
+  });
 
-  // Fetch system uptime on mount and periodically
-  onMount(() => {
-    const fetchUptime = async () => {
-      try {
-        const info = (await invoke('get_system_info')) as { uptime: number };
-        systemUptime = info.uptime;
-      } catch (err) {
-        console.error('Failed to fetch system uptime:', err);
-      }
-    };
+  // Fetch system uptime with visibility-aware polling
+  async function fetchUptime() {
+    try {
+      const info = (await invoke('get_system_info')) as { uptime: number };
+      systemUptime = info.uptime;
+    } catch (err) {
+      console.error('Failed to fetch system uptime:', err);
+    }
+  }
 
-    fetchUptime();
-    const uptimeInterval = setInterval(fetchUptime, 60000); // Update every minute
-
-    return () => clearInterval(uptimeInterval);
+  useVisibilityPolling({
+    interval: 60000, // Update every minute
+    callback: fetchUptime,
+    immediate: true
   });
 
   // Add system stats to metrics history whenever it updates
@@ -74,13 +79,31 @@
     };
   });
 
+  // Normalize PTY processes to match old process structure
+  let normalizedPtyProcesses = $derived(
+    ptyProcessStore.processes.map((p) => ({
+      name: p.process_id,
+      state: p.status === 'running' ? 'running' : 'stopped',
+      pid: p.pid,
+      cpu: 0,
+      memory: 0,
+      uptime: 0,
+      restarts: 0,
+      port: null,
+      isPtyProcess: true
+    }))
+  );
+
+  // Combine old processes with normalized PTY processes
+  let allProcesses = $derived([...$processes, ...normalizedPtyProcesses]);
+
   // Filter processes based on search query
   let filteredProcesses = $derived(
     searchQuery.trim()
-      ? $processes.filter((p) =>
+      ? allProcesses.filter((p) =>
           p.name.toLowerCase().includes(searchQuery.toLowerCase())
         )
-      : $processes
+      : allProcesses
   );
 
   async function handleStartAll() {
@@ -109,18 +132,41 @@
     }
   }
 
+  function handleViewLogs(processName: string) {
+    logViewerModal = { show: true, processName };
+  }
+
+  function closeLogViewer() {
+    logViewerModal = { show: false, processName: null };
+  }
+
   async function handleProcessAction(
     processName: string,
     action: 'start' | 'stop' | 'restart'
   ) {
     isPerformingAction = true;
     try {
-      if (action === 'start') {
-        await startProcess(processName);
-      } else if (action === 'stop') {
-        await stopProcess(processName);
-      } else if (action === 'restart') {
-        await restartProcess(processName);
+      // Check if this is a PTY process
+      const ptyProcess = ptyProcessStore.getProcess(processName);
+
+      if (ptyProcess) {
+        // Handle PTY process actions
+        if (action === 'stop') {
+          await ptyProcessStore.killProcess(processName);
+        } else if (action === 'restart') {
+          await ptyProcessStore.killProcess(processName);
+          // Note: restart would need to respawn, but we don't have the original command stored yet
+          console.warn('Restart for PTY processes not yet implemented');
+        }
+      } else {
+        // Handle old-style process actions
+        if (action === 'start') {
+          await startProcess(processName);
+        } else if (action === 'stop') {
+          await stopProcess(processName);
+        } else if (action === 'restart') {
+          await restartProcess(processName);
+        }
       }
     } catch (error) {
       console.error(`Failed to ${action} process:`, error);
@@ -178,7 +224,7 @@
       <div class="glinr-section-header">
         <h2 class="glinr-section-title">Processes</h2>
         <span class="glinr-process-count"
-          >{filteredProcesses.length} of {$processes.length}</span
+          >{filteredProcesses.length} of {allProcesses.length}</span
         >
       </div>
 
@@ -186,7 +232,7 @@
         <ProcessSearch bind:value={searchQuery} />
       </div>
 
-      {#if $processes.length === 0}
+      {#if allProcesses.length === 0}
         <div class="glinr-empty-state">
           <Package size={48} class="glinr-empty-icon" />
           <h3 class="glinr-empty-title">No Processes Configured</h3>
@@ -209,6 +255,7 @@
               {process}
               onAction={(action) => handleProcessAction(process.name, action)}
               onClick={() => handleProcessClick(process.name)}
+              onViewLogs={() => handleViewLogs(process.name)}
             />
           {/each}
         </div>
@@ -216,6 +263,13 @@
     </section>
   </div>
 </div>
+
+{#if logViewerModal.show && logViewerModal.processName}
+  <LogViewer
+    processName={logViewerModal.processName}
+    onClose={closeLogViewer}
+  />
+{/if}
 
 <style>
   .glinr-dashboard {

@@ -16,7 +16,9 @@
     ChevronDown,
     ChevronRight,
     X,
-    Info
+    Info,
+    FileText,
+    Eye
   } from 'lucide-svelte';
   import PortCountInfoModal from './PortMap/PortCountInfoModal.svelte';
   import BadgeInfoModal from './PortMap/BadgeInfoModal.svelte';
@@ -25,7 +27,11 @@
   import FilterSection from './PortMap/FilterSection.svelte';
   import ServiceBadge from './PortMap/ServiceBadge.svelte';
   import PageHeader from './PageHeader.svelte';
-  import { Network } from 'lucide-svelte';
+  import { Network, Play } from 'lucide-svelte';
+  import LogViewer from './LogViewer.svelte';
+  import ExternalLogViewer from './ExternalLogViewer.svelte';
+  import StartProcessModal from './StartProcessModal.svelte';
+  import { processLogStore } from '../stores/processLog.svelte';
 
   let refreshInterval: number | null = null;
   let expandedGroups = $state<Set<string>>(new Set());
@@ -52,6 +58,17 @@
       | 'udp'
       | null;
   }>({ show: false, badgeType: null });
+  let logViewerModal = $state<{
+    show: boolean;
+    processName: string | null;
+  }>({ show: false, processName: null });
+  let externalLogViewerModal = $state<{
+    show: boolean;
+    pid: number | null;
+    port: number | null;
+    processName: string | null;
+  }>({ show: false, pid: null, port: null, processName: null });
+  let showStartProcessModal = $state(false);
 
   // Pagination state
   let currentPage = $state(1);
@@ -83,6 +100,8 @@
     await portStore.scanPorts();
     // Detect services for discovered ports
     await detectServicesForPorts(portStore.ports);
+    // Load managed processes for log viewer
+    await processLogStore.loadProcesses();
   });
 
   onDestroy(() => {
@@ -360,6 +379,41 @@
     itemsPerPage = size;
     currentPage = 1; // Reset to first page when changing page size
   }
+
+  function openLogViewer(processName: string) {
+    logViewerModal = { show: true, processName };
+  }
+
+  function closeLogViewer() {
+    logViewerModal = { show: false, processName: null };
+  }
+
+  function openExternalLogViewer(
+    pid: number,
+    port: number,
+    processName: string
+  ) {
+    externalLogViewerModal = { show: true, pid, port, processName };
+  }
+
+  function closeExternalLogViewer() {
+    externalLogViewerModal = {
+      show: false,
+      pid: null,
+      port: null,
+      processName: null
+    };
+  }
+
+  function isManagedProcess(processName: string): boolean {
+    return processLogStore.processes.some((p) => p.name === processName);
+  }
+
+  async function handleProcessStarted() {
+    // Reload processes and refresh port list
+    await processLogStore.loadProcesses();
+    await handleRefresh();
+  }
 </script>
 
 <div class="port-map" role="region" aria-label="Network port discovery">
@@ -388,6 +442,15 @@
         <InfoBadge onClick={() => openBadgeInfoModal('udp')} />
       </span>
     </div>
+
+    <button
+      class="btn-start-process"
+      onclick={() => (showStartProcessModal = true)}
+      aria-label="Start new process"
+    >
+      <Play size={16} />
+      Start Process
+    </button>
 
     <button
       class="btn-refresh"
@@ -562,6 +625,7 @@
         class="th th-actions"
         role="columnheader"
         aria-label="Available actions"
+        style="width: 100px;"
       >
         Actions
       </div>
@@ -734,11 +798,36 @@
                 </div>
               </div>
               <div class="cell-actions">
+                {#if isManagedProcess(group.processName)}
+                  <button
+                    class="btn-icon-sm"
+                    onclick={() => openLogViewer(group.processName)}
+                    aria-label="View logs for {group.processName}"
+                    title="View Logs"
+                  >
+                    <FileText size={14} />
+                  </button>
+                {:else}
+                  <button
+                    class="btn-icon-sm"
+                    onclick={() =>
+                      openExternalLogViewer(
+                        group.pid,
+                        group.port,
+                        group.processName
+                      )}
+                    aria-label="Attach logs for port {group.port}"
+                    title="Attach External Logs"
+                  >
+                    <Eye size={14} />
+                  </button>
+                {/if}
                 <button
                   class="btn-icon-sm"
                   onclick={() =>
                     openDeleteModal(group.port, group.pid, group.processName)}
                   aria-label="Kill process {group.processName}"
+                  title="Kill Process"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -953,6 +1042,28 @@
   onClose={closeBadgeInfoModal}
 />
 
+{#if logViewerModal.show && logViewerModal.processName}
+  <LogViewer
+    processName={logViewerModal.processName}
+    onClose={closeLogViewer}
+  />
+{/if}
+
+{#if externalLogViewerModal.show && externalLogViewerModal.pid && externalLogViewerModal.port && externalLogViewerModal.processName}
+  <ExternalLogViewer
+    pid={externalLogViewerModal.pid}
+    port={externalLogViewerModal.port}
+    processName={externalLogViewerModal.processName}
+    onClose={closeExternalLogViewer}
+  />
+{/if}
+
+<StartProcessModal
+  show={showStartProcessModal}
+  onClose={() => (showStartProcessModal = false)}
+  onProcessStarted={handleProcessStarted}
+/>
+
 <style>
   .port-map {
     display: flex;
@@ -1011,6 +1122,31 @@
   .stat-udp {
     background: rgba(168, 85, 247, 0.1);
     color: rgb(168, 85, 247);
+  }
+
+  .btn-start-process {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+  }
+
+  .btn-start-process:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.5);
+    transform: translateY(-1px);
+  }
+
+  .btn-start-process:active {
+    transform: translateY(0);
   }
 
   .btn-refresh {
@@ -1235,7 +1371,7 @@
     display: grid;
     grid-template-columns:
       40px 100px 80px minmax(150px, 1.5fr)
-      80px 140px minmax(180px, 1.2fr) minmax(140px, 1fr) 70px;
+      80px 140px minmax(180px, 1.2fr) minmax(140px, 1fr) 100px;
     gap: 0.75rem;
     background: var(--muted);
     border-bottom: 1px solid var(--border);
@@ -1309,7 +1445,7 @@
     display: grid;
     grid-template-columns:
       40px 100px 80px minmax(150px, 1.5fr)
-      80px 140px minmax(180px, 1.2fr) minmax(140px, 1fr) 70px;
+      80px 140px minmax(180px, 1.2fr) minmax(140px, 1fr) 100px;
     gap: 0.75rem;
     align-items: center;
     border-bottom: 1px solid var(--border);
@@ -1411,6 +1547,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 0.5rem;
   }
 
   .port-info-wrapper {
@@ -1696,10 +1833,16 @@
   }
 
   .btn-icon-sm:hover {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.4);
+    color: #3b82f6;
+    transform: scale(1.05);
+  }
+
+  .btn-icon-sm:has(.lucide-trash-2):hover {
     background: rgba(239, 68, 68, 0.15);
     border-color: rgba(239, 68, 68, 0.4);
     color: #ef4444;
-    transform: scale(1.05);
   }
 
   .btn-icon-sm:active {

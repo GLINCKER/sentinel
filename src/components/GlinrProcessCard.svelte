@@ -13,7 +13,7 @@
 <script lang="ts">
   import type { ProcessInfo } from '../types';
   import GlinrButton from './GlinrButton.svelte';
-  import { Play, RotateCw, Square } from 'lucide-svelte';
+  import { Play, RotateCw, Square, FileText } from 'lucide-svelte';
 
   interface Props {
     process: ProcessInfo;
@@ -22,6 +22,7 @@
     selected?: boolean;
     onSelect?: (selected: boolean) => void;
     selectionMode?: boolean;
+    onViewLogs?: () => void;
   }
 
   let {
@@ -30,7 +31,8 @@
     onClick,
     selected = false,
     onSelect,
-    selectionMode = false
+    selectionMode = false,
+    onViewLogs
   }: Props = $props();
 
   type ProcessState =
@@ -140,12 +142,16 @@
 
     <div class="glinr-stat">
       <span class="glinr-stat-label">CPU</span>
-      <span class="glinr-stat-value">{process.cpu_usage.toFixed(1)}%</span>
+      <span class="glinr-stat-value"
+        >{(process.cpuUsage || process.cpu_usage || 0).toFixed(1)}%</span
+      >
     </div>
 
     <div class="glinr-stat">
       <span class="glinr-stat-label">Memory</span>
-      <span class="glinr-stat-value">{formatMemory(process.memory_usage)}</span>
+      <span class="glinr-stat-value"
+        >{formatMemory(process.memoryUsage || process.memory_usage || 0)}</span
+      >
     </div>
 
     <div class="glinr-stat">
@@ -156,6 +162,19 @@
 
   <!-- Actions -->
   <footer class="glinr-card-actions">
+    {#if isRunning && onViewLogs}
+      <GlinrButton
+        variant="secondary"
+        size="sm"
+        onclick={(e) => {
+          e.stopPropagation();
+          onViewLogs?.();
+        }}
+      >
+        <FileText size={14} />
+        Logs
+      </GlinrButton>
+    {/if}
     {#if isStopped}
       <GlinrButton
         variant="primary"

@@ -27,7 +27,8 @@
     Terminal,
     Activity,
     Container,
-    BookOpen
+    BookOpen,
+    Package
   } from 'lucide-svelte';
   import { IconButton, NavButton, StatusBadge } from '../lib/components';
   import type { ComponentType } from 'svelte';
@@ -63,6 +64,11 @@
       id: 'docker',
       label: 'Docker',
       icon: Container
+    },
+    {
+      id: 'processes',
+      label: 'Processes',
+      icon: Package
     },
     {
       id: 'shell',

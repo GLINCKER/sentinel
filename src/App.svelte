@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { Toaster } from 'svelte-sonner';
   import { currentView } from './stores/navigation';
   import { theme } from './stores/settings';
   import Dashboard from './views/Dashboard.svelte';
@@ -12,6 +13,7 @@
   import NetworkMonitor from './routes/network/+page.svelte';
   import Docker from './routes/docker/+page.svelte';
   import DocsView from './views/DocsView.svelte';
+  import ProcessManager from './views/ProcessManager.svelte';
 
   let mounted = $state(false);
 
@@ -85,6 +87,8 @@
         <Docker />
       {:else if $currentView === 'shell'}
         <ShellView />
+      {:else if $currentView === 'processes'}
+        <ProcessManager />
       {:else if $currentView === 'docs'}
         <DocsView />
       {:else if $currentView === 'settings'}
@@ -94,6 +98,11 @@
   </div>
 
   <KeyboardShortcuts />
+  <Toaster
+    theme={shouldUseDarkMode($theme) ? 'dark' : 'light'}
+    richColors
+    position="top-right"
+  />
 </div>
 
 <style>

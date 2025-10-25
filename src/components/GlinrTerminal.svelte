@@ -14,7 +14,8 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { parseAnsi, stripAnsi, detectLogLevel } from '../utils/ansi';
-  import { Copy, Download, Trash2 } from 'lucide-svelte';
+  import { Copy, Download, Trash2, Filter } from 'lucide-svelte';
+  import Dropdown from '$lib/components/Dropdown.svelte';
 
   interface LogLine {
     timestamp: string;
@@ -64,6 +65,15 @@
   const hasWarn = $derived(
     logs.some((log) => detectLogLevel(log.line) === 'warn')
   );
+
+  // Dropdown options for log level filter
+  const levelOptions = $derived([
+    { value: 'all', label: 'All Levels' },
+    { value: 'error', label: `Errors${hasError ? ' ●' : ''}` },
+    { value: 'warn', label: `Warnings${hasWarn ? ' ●' : ''}` },
+    { value: 'info', label: 'Info' },
+    { value: 'debug', label: 'Debug' }
+  ]);
 
   async function scrollToBottom() {
     if (!containerEl) return;
@@ -133,13 +143,12 @@
         placeholder="Search logs..."
       />
 
-      <select class="terminal-filter" bind:value={levelFilter}>
-        <option value="all">All Levels</option>
-        <option value="error">Errors {hasError ? '●' : ''}</option>
-        <option value="warn">Warnings {hasWarn ? '●' : ''}</option>
-        <option value="info">Info</option>
-        <option value="debug">Debug</option>
-      </select>
+      <Dropdown
+        options={levelOptions}
+        selected={levelFilter}
+        onSelect={(value) => (levelFilter = value)}
+        icon={Filter}
+      />
     </div>
 
     <div class="toolbar-right">
@@ -212,7 +221,7 @@
         {/if}
       </div>
     {:else}
-      {#each filteredLogs as log (log.timestamp + log.line)}
+      {#each filteredLogs as log, i (`${i}-${log.timestamp}-${log.line.substring(0, 50)}`)}
         <div
           class="log-line {log.stream}"
           data-level={detectLogLevel(log.line)}
@@ -282,15 +291,6 @@
   .terminal-search:focus {
     outline: none;
     border-color: var(--accent-primary);
-  }
-
-  .terminal-filter {
-    padding: var(--space-xs) var(--space-sm);
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    color: var(--text-primary);
-    font-size: var(--font-size-sm);
   }
 
   .terminal-toggle {
